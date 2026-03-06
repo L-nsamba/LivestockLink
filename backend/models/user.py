@@ -1,5 +1,6 @@
 from database.db import Base
-from sqlalchemy import Column, Integer, String, Enum
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Enum, DateTime
 
 # Definition of the user table with sqlalchemy
 class User(Base):
@@ -10,3 +11,4 @@ class User(Base):
     password_hash = Column(String(225), nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     role = Column(Enum('FARMER', 'TRANSPORTER', 'ADMIN'), nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))

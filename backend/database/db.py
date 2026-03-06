@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Creation of a connection + credentials hidden for privacy purposes
 engine = create_engine(
     f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}"
     f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",

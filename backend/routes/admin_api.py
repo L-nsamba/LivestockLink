@@ -60,9 +60,9 @@ def register():
 
 
 # Get request to retrieve existing users by id
-@auth.route('/api/auth/users/<int:user_id>', methods=['GET'])
+@auth.route('/auth/users/<user_id>', methods=['GET'])
 def get_user(user_id):
-    session = Session
+    session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -74,9 +74,9 @@ def get_user(user_id):
     }), 200
 
 # PUT Method to update user info
-@auth.route('/api/auth/users/<int: user_id>', methods=['PUT'])
+@auth.route('/auth/users/<user_id>', methods=['PUT'])
 def update_user(user_id):
-    session = Session
+    session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -93,9 +93,9 @@ def update_user(user_id):
     return jsonify({"message": "User updated"}), 200
 
 # DELETE method to remove user
-@auth.route('/api/auth/users/<int:user_id>', methods=['DELETE'])
+@auth.route('/auth/users/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    session = Session
+    session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
     if not user:
         return jsonify({"error": "User not found"}), 404

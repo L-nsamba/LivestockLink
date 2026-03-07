@@ -49,7 +49,9 @@ def register():
         transporter = Transporter(
             user_id=new_user.user_id,
             vehicle_type=data.get('vehicle_type'),
-            vehicle_capacity=data.get('vehicle_capacity')
+            vehicle_capacity=data.get('vehicle_capacity'),
+            license_number=data.get('license_number'),
+            organization_name=data.get('organization_name')
         )
         session.add(transporter)
 

@@ -3,7 +3,7 @@
 # GET (View all transport requests) --> /api/admin/requests
 # GET (View all active bookings) --> /api/admin/bookings
 # DELETE (delete a user) --> /api/admin/users/<id>
-
+import bcrypt
 from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.user import User
@@ -24,12 +24,16 @@ def register():
     if existing:
         return jsonify({"error": "Email already in use"}), 409
     
+    # Hash the plain text password before storing
+    plain_password = data['password']
+    hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt())
+
     # Creation of dummy user
     new_user = User(
         full_name = data['full_name'],
         contact = data['contact'],
         email = data['email'],
-        password_hash = data['password'],
+        password_hash = hashed_password.decode('utf-8'),
         role = data['role']
         # created_at = data['created_at']
     )

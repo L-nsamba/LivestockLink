@@ -1,8 +1,6 @@
 # API endpoint methods
-# GET (View all users) --> /api/admin/users
-# GET (View all transport requests) --> /api/admin/requests
-# GET (View all active bookings) --> /api/admin/bookings
-# DELETE (delete a user) --> /api/admin/users/<id>
+# POST /api/auth/login      - verify credentials, return token
+# POST /api/auth/logout     - invalidate token
 import bcrypt
 from flask import Blueprint, request, jsonify
 from database.db import Session
@@ -57,3 +55,7 @@ def register():
 
     session.commit()
     return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
+
+# Next tasks---->>>>
+# POST /api/auth/login      - verify credentials, return token
+# POST /api/auth/logout     - invalidate token

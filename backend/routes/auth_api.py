@@ -56,6 +56,51 @@ def register():
     session.commit()
     return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
 
-# Next tasks---->>>>
+
 # POST /api/auth/login      - verify credentials, return token
+@auth.route('/auth/login', methods=['POST'])
+def login():
+    session = Session()
+    data = request.get_json()
+
+    #Get email, password and role
+    email = data.get('email') if data else None
+    password = data.get('password') if data else None
+    role = data.get('role') if data else None
+
+    #Validate fields
+    if not email or not password or not role:
+        return jsonify({"error": "Email, password, and role are required"}), 400
+
+    #Query user by email
+    user = session.query(User).filter_by(email=email).first()
+
+    #If no user, retuen an error
+    if not user:
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    #Check the password
+    password_matches = bcrypt.checkpw(
+        password.encode('utf-8'),
+        user.password_hash.encode('utf-8')
+    )
+
+    if not password_matches:
+        return jsonify({"error": "Invalid password"}), 401
+
+    #Check the role
+    if user.role != role:
+        return jsonify({"error": "Invalid role selected"}), 401
+
+    #Retun Successful login response
+    return jsonify({
+        "message": "Login successful",
+        "user": {
+            "user_id": user.user_id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role
+        }
+    }), 200
+
 # POST /api/auth/logout     - invalidate token

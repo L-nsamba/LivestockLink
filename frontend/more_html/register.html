@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivestockLink - Create Account</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link href="../more_css/main.css" rel="stylesheet">
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="logo">Livestock<span>Link</span></div>
+        <h1>Let's get you started!</h1>
+
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" placeholder="Leon Test" autocomplete="name">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" placeholder="yourname@email.com" autocomplete="email">
+        </div>
+
+        <div class="form-group">
+            <label>Phone Number</label>
+            <div class="phone-row">
+                <div class="select-wrapper">
+                    <select id="phone_code" class="flag-select">
+                        <option value="+250">🇷🇼 +250</option>
+                    </select>
+                </div>
+                <input type="tel" id="phone" placeholder="123 4567 8910">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Create Password</label>
+            <div class="input-wrapper">
+                <input type="password" id="password" placeholder="••••••••" autocomplete="new-password">
+                <span class="toggle-pw" onclick="togglePassword('password', this)">👁</span>
+            </div>
+            <p class="pw-hint">
+                Password must contain a minimum of 8 characters
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="role">User Type</label>
+            <div class="select-wrapper">
+                <select id="role">
+                    <option value="" disabled selected>transporter, farmer, admin</option>
+                    <option value="FARMER">Farmer</option>
+                    <option value="TRANSPORTER">Transporter</option>
+                    <option value="ADMIN">Admin</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-primary" id="signup-btn" onclick="handleRegister()">Sign Up</button>
+
+        <p class="footer-text">Already a user? <a href="login.html">Login</a></p>
+    </div>
+
+    <div class="right-panel">
+        <p class="tagline">Easing your<br/>animal<br/>transportation<br/>today!</p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="../more_js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivestockLink - Sign In</title>
+    <link href="../more_css/login.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+</head>
+
+<body>
+
+    <div class="card">
+        <div class="card-logo">Livestock Link</div>
+        <p class="card-sub">
+            Easing your animal transportation today! <br/>
+            Welcome back!
+        </p>
+
+        <div class="form-group">
+            <label for="email">Email  Address</label>
+            <input type="email" id="email" placeholder="yourname@email.com" autocomplete="email"/>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrapper">
+                <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+                <span class="toggle-pw" onclick="togglePassword('password', this)">👁</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="role">User Type</label>
+            <div class="select-wrapper">
+                <select id="role">
+                    <option value="" disabled selected>transporter, farmer, admin</option>
+                    <option value="FARMER">Farmer</option>
+                    <option value="TRANSPORTER">Transporter</option>
+                    <option value="ADMIN">Admin</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-primary" id="login-btn" onclick="handleLogin()">Log In</button>
+
+        <p class="footer-text">Don't Have An Account? <a href="more_html/register.html">Create Account</a></p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    
+    <script src="more_js/auth.js"></script>
+</body>
+</html>

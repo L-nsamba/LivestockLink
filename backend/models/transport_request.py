@@ -1,51 +1,23 @@
 import uuid
 from database.db import Base
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Enum, DateTime, Text, Float, ForeignKey
-from sqlalchemy.dialects.mysql import CHAR
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Enum, DateTime, Text, ForeignKey
 
 
 class TransportRequest(Base):
-    __tablename__ = "transport_request"
+    __tablename__ = "transport_requests"
 
-    # Primary key
-    request_id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-
-    # Foreign keys linking to farmer and transporter
-    farmer_id = Column(CHAR(36), ForeignKey("farmer.user_id"), nullable=False)
-    transporter_id = Column(CHAR(36), ForeignKey("transporter.user_id"), nullable=True)  # Nullable until assigned
-
-    # Cargo details
-    cargo_description = Column(Text, nullable=False)
-    cargo_weight_kg = Column(Float, nullable=False)
-
-    # Location details
-    pickup_location = Column(String(200), nullable=False)
-    dropoff_location = Column(String(200), nullable=False)
-
-    # Scheduling
-    requested_date = Column(DateTime, nullable=False)
-
-    # Request lifecycle status
+    request_id = Column(Integer, primary_key=True, autoincrement=True)
+    farmer_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    pickup_location = Column(String(150), nullable=False)
+    destination_location = Column(String(150), nullable=False)
+    pickup_date = Column(DateTime, nullable=False)
+    animal_type = Column(String(50), nullable=False)
+    animal_quantity = Column(Integer, nullable=False)
     status = Column(
-        Enum('PENDING', 'ACCEPTED', 'IN_TRANSIT', 'COMPLETED', 'CANCELLED'),
+        Enum('PENDING', 'BOOKED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'),
         nullable=False,
         default='PENDING'
     )
-
-    # Timestamps
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
-
-    # Relationships for easy access to related objects
-    farmer = relationship("Farmer", backref="transport_requests", foreign_keys=[farmer_id])
-    transporter = relationship("Transporter", backref="assigned_requests", foreign_keys=[transporter_id])
-
-    def __repr__(self):
-        return (
-            f"<TransportRequest(request_id={self.request_id}, "
-            f"status={self.status}, "
-            f"farmer_id={self.farmer_id}, "
-            f"transporter_id={self.transporter_id})>"
-        )

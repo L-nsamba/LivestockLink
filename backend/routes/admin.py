@@ -8,7 +8,7 @@ from models.transporter import Transporter
 admin = Blueprint('admin', __name__)
 
 # Get request to retrieve existing users by id
-@admin.route('/auth/users/<user_id>', methods=['GET'])
+@admin.route('/admin/users/<user_id>', methods=['GET'])
 def get_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
@@ -22,7 +22,7 @@ def get_user(user_id):
     }), 200
 
 # PUT Method to update user info
-@admin.route('/auth/users/<user_id>', methods=['PUT'])
+@admin.route('/admin/users/<user_id>', methods=['PUT'])
 def update_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
@@ -41,7 +41,7 @@ def update_user(user_id):
     return jsonify({"message": "User updated"}), 200
 
 # DELETE method to remove user
-@admin.route('/auth/users/<user_id>', methods=['DELETE'])
+@admin.route('/admin/users/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()

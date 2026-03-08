@@ -1,9 +1,7 @@
 import uuid
-from xmlrpc.client import DateTime
-
 from database.db import Base
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, Enum, Datetime, ForeignKey
+from sqlalchemy import Column, Enum, DateTime, ForeignKey
 from sqlalchemy.dialects.mysql import CHAR
 
 

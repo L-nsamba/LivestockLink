@@ -1,7 +1,61 @@
 # API endpoint methods
-# POST (create new user) --> /api/auth/register
-# POST (login) --> /api/auth/login
-# POST (logout) --> /api/auth/logout
-# GET (get user) --> /api/auth/users/<id>
-# PUT (update user) --> /api/auth/users/<id>
-# DELETE (delete user) --> /api/auth/users/<id>
+# POST /api/auth/login      - verify credentials, return token
+# POST /api/auth/logout     - invalidate token
+import bcrypt
+from flask import Blueprint, request, jsonify
+from database.db import Session
+from models.user import User
+from models.farmer import Farmer
+from models.transporter import Transporter
+
+auth = Blueprint('auth', __name__)
+
+# Creation / Registering of user
+@auth.route('/auth/register', methods=['POST'])
+def register():
+    session = Session()
+    data = request.get_json()
+
+    # Confirming that the email is not already existing 
+    # Email is the field we defined in our table to be fully unique hence it is our reference
+    existing = session.query(User).filter_by(email=data['email']).first()
+    if existing:
+        return jsonify({"error": "Email already in use"}), 409
+    
+    # Hash the plain text password before storing
+    plain_password = data['password']
+    hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt())
+
+    # Creation of dummy user
+    new_user = User(
+        full_name = data['full_name'],
+        contact = data['contact'],
+        email = data['email'],
+        password_hash = hashed_password.decode('utf-8'),
+        role = data['role']
+        # created_at = data['created_at']
+    )
+
+    session.add(new_user)
+    session.flush()
+
+    # Creation of role specifications for users
+    if data['role'] == 'FARMER':
+        farmer = Farmer(user_id=new_user.user_id, farm_location=data.get('farm_location'), created_at=data.get('created_at'))
+        session.add(farmer)
+    elif data['role'] == 'TRANSPORTER':
+        transporter = Transporter(
+            user_id=new_user.user_id,
+            vehicle_type=data.get('vehicle_type'),
+            vehicle_capacity=data.get('vehicle_capacity'),
+            license_number=data.get('license_number'),
+            organization_name=data.get('organization_name')
+        )
+        session.add(transporter)
+
+    session.commit()
+    return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
+
+# Next tasks---->>>>
+# POST /api/auth/login      - verify credentials, return token
+# POST /api/auth/logout     - invalidate token

@@ -104,3 +104,13 @@ def login():
     }), 200
 
 # POST /api/auth/logout     - invalidate token
+@auth.route('/auth/logout', methods=['POST'])
+def logout():
+    """
+    Simply logs the user out. Frontend will clear localStorage and redirect the user to the login page.
+    As the project is developed, we will make use of authentification tokens
+    """
+
+    return jsonify({
+        "message": "User logged out successfully"
+    }), 200

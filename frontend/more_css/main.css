@@ -13,7 +13,25 @@ body {
     justify-content: center;
     padding: 1.5rem;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+}
+
+.left-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 3rem 5rem;
+    background: #fff;
+    max-width: 560px;
+    animation: slideIn 0.6s ease both;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+@keyframes slideIn {
+    from {opacity: 0; transform: translateX(-24px); }
+    to {opacity: 1; transform: translateX(0); }
 }
 
 .card {
@@ -31,6 +49,28 @@ body {
 @keyframes popIn {
     from {opacity: 0; transform: scale(0.92) translateY(16px);}
     to {opacity: 1; transform: scale(1) translateY(0);}
+}
+
+.logo {
+    font-family: 'Fraunces', 'serif';
+    font-size: 1.3rem;
+    color: #1e3a3a;
+    margin-bottom: 2.5rem;
+    letter-spacing: -0.5px;
+    text-align: center;
+}
+
+.logo span { color: #5a9080;}
+
+h1 {
+    font-family: 'Fraunces', 'serif';
+    font-size: 2.2rem;
+    color: #1e3a3a;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 2rem;
+    letter-spacing: -1px;
+    text-align: center;
 }
 
 .card-logo  {
@@ -59,7 +99,7 @@ label {
     display: block;
     font-size: 0.82rem;
     font-weight: 600;
-    color: var(--muted);
+    color: #6b8a88;
     margin-bottom: 0.4rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -81,7 +121,8 @@ input, select {
 
 input:focus, select:focus{
     border-color: #5a9080;
-    box-shadow: 0 0 0 3 px rgba(90, 144, 128, 0.12);
+    box-shadow: 0 0 0 3px rgba(90, 144, 128, 0.12);
+    background: #fff;
 }
 
 input::placeholder {
@@ -99,7 +140,7 @@ input::placeholder {
     transform: translateY(-50%);
     cursor: pointer;
     color: #6b8a88;
-    font-size: 1 rem;
+    font-size: 1rem;
     user-select: none;
     transition: color 0.2s;
 }
@@ -121,6 +162,27 @@ input::placeholder {
     pointer-events: none;
     color:  #6b8a88;
     font-size: 0.9rem;
+}
+
+.pw-hint {
+    font-size: 0.75rem;
+    color: #6b8a88;
+    margin-top: 0.3rem;
+    line-height: 1.4;
+}
+
+.phone-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.phone-row .flag-select {
+    width: 110px;
+    flex-shrink: 0;
+}
+
+.phone-row input { 
+    flex: 1;
 }
 
 .btn-primary {
@@ -181,8 +243,83 @@ input::placeholder {
 .toast.success { background-color: green;}
 .toast.error {background: red;}
 
+.right-panel {
+    flex: 1;
+    background: #8bbcaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.8s ease both 0.2s
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+.right-panel::before {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    top: -100px;
+    right: -100px;
+}
+
+.right-panel::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    bottom: -60px;
+    left: -60px;
+}
+
+.tagline {
+    font-family: 'Fraunces', 'serif';
+    font-size: 3rem;
+    font-weight: 900;
+    color: #1e3a3a;
+    line-height: 1.1;
+    letter-spacing: -2px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+
 @media (max-width: 480px) {
     .card {
         padding: 2rem 1.5rem;
+    }
+
+    .logo {
+        text-align: center;
+    }
+
+    h1 {
+        text-align: center;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    .left-panel {
+        max-width: 100%;
+        padding: 2rem 1.5rem;
+    }
+
+    .right-panel {
+        display: none;
     }
 }

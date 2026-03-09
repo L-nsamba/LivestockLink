@@ -16,45 +16,56 @@ def register():
     session = Session()
     data = request.get_json()
 
-    # Confirming that the email is not already existing 
-    # Email is the field we defined in our table to be fully unique hence it is our reference
-    existing = session.query(User).filter_by(email=data['email']).first()
-    if existing:
-        return jsonify({"error": "Email already in use"}), 409
-    
-    # Hash the plain text password before storing
-    plain_password = data['password']
-    hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt())
+    # Ensuring the user enters all required fields
+    required = ['full_name', 'contact', 'email', 'password', 'role']
+    if not data or not all(k in data for k in required):
+        return jsonify({"error": "Missing required fields"}), 400
 
-    # Creation of dummy user
-    new_user = User(
-        full_name = data['full_name'],
-        contact = data['contact'],
-        email = data['email'],
-        password_hash = hashed_password.decode('utf-8'),
-        role = data['role']
-        # created_at = data['created_at']
-    )
+    # Error handling incase user fills in form incorrectly i.e avoiding tracebacks
+    try:
+        # Confirming that the email is not already existing 
+        # Email is the field we defined in our table to be fully unique hence it is our reference
+        existing = session.query(User).filter_by(email=data['email']).first()
+        if existing:
+            return jsonify({"error": "Email already in use"}), 409
+        
+        # Hash the plain text password before storing
+        plain_password = data['password']
+        hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt())
 
-    session.add(new_user)
-    session.flush()
-
-    # Creation of role specifications for users
-    if data['role'] == 'FARMER':
-        farmer = Farmer(user_id=new_user.user_id, farm_location=data.get('farm_location'), created_at=data.get('created_at'))
-        session.add(farmer)
-    elif data['role'] == 'TRANSPORTER':
-        transporter = Transporter(
-            user_id=new_user.user_id,
-            vehicle_type=data.get('vehicle_type'),
-            vehicle_capacity=data.get('vehicle_capacity'),
-            license_number=data.get('license_number'),
-            organization_name=data.get('organization_name')
+        # Creation of dummy user
+        new_user = User(
+            full_name = data['full_name'],
+            contact = data['contact'],
+            email = data['email'],
+            password_hash = hashed_password.decode('utf-8'),
+            role = data['role']
         )
-        session.add(transporter)
 
-    session.commit()
-    return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
+        session.add(new_user)
+        session.flush()
+
+        # Creation of role specifications for users
+        if data['role'] == 'FARMER':
+            farmer = Farmer(user_id=new_user.user_id, farm_location=data.get('farm_location'), created_at=data.get('created_at'))
+            session.add(farmer)
+        elif data['role'] == 'TRANSPORTER':
+            transporter = Transporter(
+                user_id=new_user.user_id,
+                vehicle_type=data.get('vehicle_type'),
+                vehicle_capacity=data.get('vehicle_capacity'),
+                license_number=data.get('license_number'),
+                organization_name=data.get('organization_name')
+            )
+            session.add(transporter)
+
+        session.commit()
+        return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": "Registration"}), 500
+    finally:
+        session.close()        
 
 
 # POST /api/auth/login      - verify credentials, return token
@@ -72,36 +83,41 @@ def login():
     if not email or not password or not role:
         return jsonify({"error": "Email, password, and role are required"}), 400
 
-    #Query user by email
-    user = session.query(User).filter_by(email=email).first()
+    try:
+        #Query user by email
+        user = session.query(User).filter_by(email=email).first()
 
-    #If no user, retuen an error
-    if not user:
-        return jsonify({"error": "Invalid email or password"}), 401
+        #If no user, retuen an error
+        if not user:
+            return jsonify({"error": "Invalid email or password"}), 401
 
-    #Check the password
-    password_matches = bcrypt.checkpw(
-        password.encode('utf-8'),
-        user.password_hash.encode('utf-8')
-    )
+        #Check the password
+        password_matches = bcrypt.checkpw(
+            password.encode('utf-8'),
+            user.password_hash.encode('utf-8')
+        )
 
-    if not password_matches:
-        return jsonify({"error": "Invalid password"}), 401
+        if not password_matches:
+            return jsonify({"error": "Invalid password"}), 401
 
-    #Check the role
-    if user.role != role:
-        return jsonify({"error": "Invalid role selected"}), 401
+        #Check the role
+        if user.role != role:
+            return jsonify({"error": "Invalid role selected"}), 401
 
-    #Retun Successful login response
-    return jsonify({
-        "message": "Login successful",
-        "user": {
-            "user_id": user.user_id,
-            "full_name": user.full_name,
-            "email": user.email,
-            "role": user.role
-        }
-    }), 200
+        #Retun Successful login response
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "user_id": user.user_id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "role": user.role
+            }
+        }), 200
+    except Exception:
+        return jsonify({"error": "Login failed"}), 500
+    finally:
+        session.close()
 
 # POST /api/auth/logout     - invalidate token
 @auth.route('/auth/logout', methods=['POST'])

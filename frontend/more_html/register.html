@@ -58,6 +58,25 @@
             </div>
         </div>
 
+        <div id="transporter-fields" style="display:none;">
+            <div class="form-group">
+                <label for="vehicle_type">Vehicle Type</label>
+                <input type="text" id="vehicle_type" placeholder="e.g. Toyota Noah, Suzuki Carry ">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_capacity">Vehicle Capacity (kg)</label>
+                <input type="number" id="vehicle_capacity" placeholder="e.g. 1000">
+            </div>
+            <div class="form-group">
+                <label for="license_number">License Number</label>
+                <input type="text" id="license_number" placeholder="e.g. RAB 123A">
+            </div>
+            <div class="form-group">
+                <label for="organization_name">Organization Name (optional)</label>
+                <input type="text" id="organization_name" placeholder="e.g. Rwanda Pig Farmers Association ">
+            </div>
+        </div>
+
         <button class="btn-primary" id="signup-btn" onclick="handleRegister()">Sign Up</button>
 
         <p class="footer-text">Already a user? <a href="login.html">Login</a></p>
@@ -69,6 +88,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="../more_js/auth.js"></script>
+    <script src="../more_js/register.js" type="module"></script>
 </body>
 </html>

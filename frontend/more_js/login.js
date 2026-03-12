@@ -1,7 +1,7 @@
 const BASE_URL = 'http://127.0.0.1:5000';
 
 // This function ensures the provision of interactive feedback messages to user like error, success
-function showToast(message, type= '') {
+export function showToast(message, type= '') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast ${type} show`
@@ -9,7 +9,7 @@ function showToast(message, type= '') {
 }
 
 // This function ensures the password is not visible when user is entering 
-function togglePassword(inputId, icon) {
+export function togglePassword(inputId, icon) {
 const input = document.getElementById(inputId);
 if (input.type === 'password') {
     input.type = 'text';
@@ -73,6 +73,9 @@ async function handleLogin() {
         btn.textContent = 'Log In';
     }
 }
+
+window.handleLogin = handleLogin;
+window.togglePassword = togglePassword;
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleLogin();

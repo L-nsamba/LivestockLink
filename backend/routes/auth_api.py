@@ -47,7 +47,7 @@ def register():
 
         # Creation of role specifications for users
         if data['role'] == 'FARMER':
-            farmer = Farmer(user_id=new_user.user_id, farm_location=data.get('farm_location'), created_at=data.get('created_at'))
+            farmer = Farmer(user_id=new_user.user_id, farm_location=data.get('farm_location', ''))
             session.add(farmer)
         elif data['role'] == 'TRANSPORTER':
             transporter = Transporter(
@@ -63,7 +63,7 @@ def register():
         return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
     except Exception as e:
         session.rollback()
-        return jsonify({"error": "Registration"}), 500
+        return jsonify({"error": str(e)}), 500
     finally:
         session.close()        
 

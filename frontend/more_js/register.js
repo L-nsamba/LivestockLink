@@ -9,6 +9,9 @@ function validateForm(data) {
     if (!data.contact.trim()) return 'Phone number is required';
     if (data.password.length < 8) return 'Password must be at least 8 characters';
     if (!data.role) return 'Please select a user type';
+    if (data.role === 'FARMER') {
+        if (!data.farm_location) return 'Farm location is required';
+    }
     if (data.role === 'TRANSPORTER') {
         if (!data.vehicle_type) return 'Vehicle type is required';
         if (!data.vehicle_capacity) return 'Vehicle capacity is required';
@@ -31,6 +34,7 @@ async function handleRegister() {
         password : document.getElementById('password').value,
         role : document.getElementById('role').value,
         // These additional fields will only pop up when the Transporter option is selected since that info is necessary in the database
+        farm_location : document.getElementById('farm_location')?.value || null,
         vehicle_type : document.getElementById('vehicle_type')?.value || null,
         vehicle_capacity : document.getElementById('vehicle_capacity')?.value || null,
         license_number : document.getElementById('license_number')?.value || null,
@@ -77,9 +81,12 @@ window.togglePassword = togglePassword;
 
 
 // Only when a transporter role is selected will the additional transporter specific fields appear
+// Only when a farmer role is selected will the farm location field appear
 document.getElementById('role').addEventListener('change', function () {
     document.getElementById('transporter-fields').style.display =
         this.value === 'TRANSPORTER' ? 'block' : 'none';
+    document.getElementById('farmer-fields').style.display =
+        this.value === 'FARMER' ? 'block' : 'none';
 });
 
 // Allowing Enter Key to submit form

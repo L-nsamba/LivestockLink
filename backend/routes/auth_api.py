@@ -33,7 +33,7 @@ def register():
         plain_password = data['password']
         hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt())
 
-        # Creation of dummy user
+        # Creation of new user
         new_user = User(
             full_name = data['full_name'],
             contact = data['contact'],

@@ -17,6 +17,9 @@ function validateForm(data) {
         if (!data.vehicle_capacity) return 'Vehicle capacity is required';
         if (!data.license_number) return 'License number is required';
     }
+    if (data.role === 'ADMIN') {
+        if (!data.admin_key) return 'Invalid Admin Key';
+    }
     return null;
 }
 
@@ -33,7 +36,9 @@ async function handleRegister() {
         contact : phoneCode + phoneNum,
         password : document.getElementById('password').value,
         role : document.getElementById('role').value,
-        // These additional fields will only pop up when the Transporter option is selected since that info is necessary in the database
+        // This field will only show when a user selects admin and only accepts the single secret key
+        admin_key: document.getElementById('admin_key')?.value || null,
+        // These additional fields will only pop up when the Transporter option is selected
         farm_location : document.getElementById('farm_location')?.value || null,
         vehicle_type : document.getElementById('vehicle_type')?.value || null,
         vehicle_capacity : document.getElementById('vehicle_capacity')?.value || null,
@@ -47,13 +52,18 @@ async function handleRegister() {
         return;
     }
 
+    
     btn.disabled = true;
     btn.textContent = 'Creating account....';
 
     // User creation and referencing the url path to the api logic for registration
-    // The logic in the auth_api file enables the data entered in the fields to be saved in the database
     try {
-        const response = await fetch(`${BASE_URL}/api/auth/register`, {
+        // Url route to the path which allows admin creation (/api/admin/register)
+        const url = data.role === 'ADMIN'
+            ? `${BASE_URL}/api/admin/register`
+            : `${BASE_URL}/api/auth/register`;
+
+        const response = await fetch(url, {
             method : 'POST',
             headers : {'Content-Type' : 'application/json'},
             body : JSON.stringify(data),
@@ -80,13 +90,16 @@ window.handleRegister = handleRegister;
 window.togglePassword = togglePassword;
 
 
-// Only when a transporter role is selected will the additional transporter specific fields appear
-// Only when a farmer role is selected will the farm location field appear
+// Only when transporter role is selected will the additional transporter specific fields appear
+// Only when farmer role is selected will the farm location field appear
+// Only when admin role is selected will the admin key appear
 document.getElementById('role').addEventListener('change', function () {
     document.getElementById('transporter-fields').style.display =
         this.value === 'TRANSPORTER' ? 'block' : 'none';
     document.getElementById('farmer-fields').style.display =
         this.value === 'FARMER' ? 'block' : 'none';
+    document.getElementById('admin-fields').style.display =
+        this.value === 'ADMIN' ? 'block' : 'none';
 });
 
 // Allowing Enter Key to submit form

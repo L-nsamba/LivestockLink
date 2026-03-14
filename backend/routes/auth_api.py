@@ -10,7 +10,7 @@ from models.transporter import Transporter
 
 auth = Blueprint('auth', __name__)
 
-# Creation / Registering of user
+# Creation / Registering of a farmer or transporter
 @auth.route('/auth/register', methods=['POST'])
 def register():
     session = Session()
@@ -58,6 +58,10 @@ def register():
                 organization_name=data.get('organization_name')
             )
             session.add(transporter)
+
+        # Rejecting admin creation by non-authorized personnel on this api endpoint path  
+        if data['role'] == 'ADMIN':
+            return jsonify({"error": "Cannot register as admin"}), 403
 
         session.commit()
         return jsonify({"message": "User created", "user_id": new_user.user_id}), 201

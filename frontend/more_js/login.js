@@ -39,7 +39,7 @@ async function handleLogin() {
     btn.textContent = 'Logging in...'
 
     try {
-        const response = await fetch(`${BASE_URL}/auth/login`, {
+        const response = await fetch(`${BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body : JSON.stringify({email, password, role}),
@@ -57,9 +57,9 @@ async function handleLogin() {
             // Redirecting to the respective role dashboard
             setTimeout(() => {
                 userRole = (result.user?.role || role).toUpperCase();
-                if (userRole === 'FARMER') window.location.href = 'farmer-dashboard.html';
-                else if (userRole === 'TRANSPORTER') window.location.href = 'transporter-dashboard.html';
-                else if (userRole === 'ADMIN') window.location.href = 'admin-dashboard.html';
+                if (userRole === 'FARMER') window.location.href = './more_html/farmer-dashboard.html';
+                else if (userRole === 'TRANSPORTER') window.location.href = './more_html/transporter-dashboard.html';
+                else if (userRole === 'ADMIN') window.location.href = './more_html/admin-dashboard.html';
 
             }, 1200);
         } else {

@@ -13,7 +13,7 @@ def client():
 @pytest.fixture
 # Creation of a dummy admin to avoid having to repeat the login logic 
 def admin_token(client):
-    response = client.post('/auth/login', json={
+    response = client.post('/api/auth/login', json={
         "email" : "admin@livestocklink.com",
         "password" : "adminpass1234",
         "role" : "ADMIN"
@@ -22,9 +22,9 @@ def admin_token(client):
 
 # Test to retrieve all existing users
 def test_get_all_users(client, admin_token):
-    response = client.get('/admin/users')
-        # headers={"Authorization" : f"Bearer {admin_token}"}
-        # )
+    response = client.get('/api/admin/users',
+        headers={"Authorization" : f"Bearer {admin_token}"}
+        )
     assert response.status_code == 200
     data = response.get_json()
     assert isinstance(data, list) # This returns the list of existing users

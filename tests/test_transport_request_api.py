@@ -1,0 +1,1 @@
+# Use pytest to test the API endpoint logic in the corresponding routes folder

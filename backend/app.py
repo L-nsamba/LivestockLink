@@ -5,6 +5,7 @@ from flask import Flask
 from flask_cors import CORS
 from backend.routes.auth_api import auth
 from backend.routes.admin import admin
+from backend.routes.transport_requests_api import transport_requests
 
 def create_app():
     app = Flask(__name__)
@@ -12,6 +13,7 @@ def create_app():
 
     app.register_blueprint(auth, url_prefix="/api")
     app.register_blueprint(admin, url_prefix="/api")
+    app.register_blueprint(transport_requests, url_prefix="/api")
 
     return app
 

@@ -7,6 +7,7 @@ from database.db import Session
 from models.user import User
 from models.farmer import Farmer
 from models.transporter import Transporter
+from backend.utils.jwt_utils import generate_token
 
 auth = Blueprint('auth', __name__)
 
@@ -108,9 +109,12 @@ def login():
         if user.role != role:
             return jsonify({"error": "Invalid role selected"}), 401
 
+        # Token creation
+        token = generate_token(user.user_id, user.role)
         #Retun Successful login response
         return jsonify({
             "message": "Login successful",
+            "token": token,
             "user": {
                 "user_id": user.user_id,
                 "full_name": user.full_name,

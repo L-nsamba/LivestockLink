@@ -6,6 +6,7 @@ from database.db import Session
 from models.user import User
 from models.farmer import Farmer
 from models.transporter import Transporter
+from backend.utils.auth_decorator import require_role
 
 admin = Blueprint('admin', __name__)
 
@@ -14,6 +15,7 @@ ADMIN_KEY = os.getenv("ADMIN_REGISTRATION_KEY")
 
 # Creation of an admin
 @admin.route('/admin/register', methods=['POST'])
+@require_role('ADMIN')
 def register_admin():
     data = request.get_json()
 
@@ -52,6 +54,7 @@ def register_admin():
 
 # Get all users
 @admin.route('/admin/users', methods=['GET'])
+@require_role('ADMIN')
 def get_all_users():
     session = Session()
     users = session.query(User).all()
@@ -69,6 +72,7 @@ def get_all_users():
 
 # Get request to retrieve existing users by id
 @admin.route('/admin/users/<user_id>', methods=['GET'])
+@require_role('ADMIN')
 def get_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
@@ -83,6 +87,7 @@ def get_user(user_id):
 
 # PUT Method to update user info
 @admin.route('/admin/users/<user_id>', methods=['PUT'])
+@require_role('ADMIN')
 def update_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
@@ -102,6 +107,7 @@ def update_user(user_id):
 
 # DELETE method to remove user
 @admin.route('/admin/users/<user_id>', methods=['DELETE'])
+@require_role('ADMIN')
 def delete_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()

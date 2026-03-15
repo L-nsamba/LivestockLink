@@ -22,7 +22,7 @@ def create_request():
     session = Session()
     try:
         data = request.get_json()
-        required_fields = ['pickup_location', 'destination', 'pickup_date', 'animal_type', 'animal_quantity']
+        required_fields = ['pickup_location', 'destination_location', 'pickup_date', 'animal_type', 'animal_quantity']
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
@@ -32,7 +32,7 @@ def create_request():
         new_request = TransportRequest(
             farmer_id = farmer_id,
             pickup_location = data['pickup_location'],
-            destination = data['destination'],
+            destination_location = data['destination_location'],
             pickup_date = data['pickup_date'],
             animal_type = data['animal_type'],
             animal_quantity = data['animal_quantity'],
@@ -60,7 +60,7 @@ def get_all_requests():
             "request_id" : r.request_id,
             "farmer_id" : r.farmer_id,
             "pickup_location" : r.pickup_location,
-            "destination" : r.destination,
+            "destination_location" : r.destination_location,
             "pickup_date" : str(r.pickup_date),
             "animal_type" : r.animal_type,
             "animal_quantity" : r.animal_quantity,
@@ -86,7 +86,7 @@ def get_farmer_requests(farmer_id):
         return jsonify([{
             "request_id" : r.request_id,
             "pickup_location" : r.pickup_location,
-            "destination" : r.destination,
+            "destination_location" : r.destination_location,
             "pickup_date" : str(r.pickup_date),
             "animal_type" : r.animal_type,
             "animal_quantity" : r.animal_quantity,

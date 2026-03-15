@@ -10,22 +10,27 @@ from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.transport_request import TransportRequest
 from models.farmer import Farmer
+from backend.utils.auth_decorator import require_role, get_current_user_id
 
 transport_requests = Blueprint('transport_request', __name__)
 
-# POST request which is basically the farmer initiating the creation of a transport request
+# POST request - farmer initiates a transport request
+# farmer_id is taken from the JWT token, not the request body, to prevent spoofing
 @transport_requests.route('/api/requests', methods=['POST'])
+@require_role('FARMER')
 def create_request():
     session = Session()
     try:
         data = request.get_json()
-        required_fields = ['farmer_id', 'pickup_location', 'destination', 'pickup_date', 'animal_type', 'animal_quantity']
+        required_fields = ['pickup_location', 'destination', 'pickup_date', 'animal_type', 'animal_quantity']
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
+        farmer_id = get_current_user_id()
+
         new_request = TransportRequest(
-            farmer_id = data['farmer_id'],
+            farmer_id = farmer_id,
             pickup_location = data['pickup_location'],
             destination = data['destination'],
             pickup_date = data['pickup_date'],
@@ -37,11 +42,15 @@ def create_request():
         session.add(new_request)
         session.commit()
         return jsonify({"message": "Request created", "request_id": new_request.request_id}), 201
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         session.close()
 
-# Get request which allows transporters to retrieve latest transport requests made by farmers
+# GET all pending requests - transporters browse available jobs
 @transport_requests.route('/api/requests', methods=['GET'])
+@require_role('TRANSPORTER')
 def get_all_requests():
     session = Session()
     try:
@@ -58,17 +67,50 @@ def get_all_requests():
             "status" : r.status,
             "notes" : r.notes
         } for r in pending_requests]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+# GET farmer's own request history
+@transport_requests.route('/api/requests/farmer/<farmer_id>', methods=['GET'])
+@require_role('FARMER')
+def get_farmer_requests(farmer_id):
+    session = Session()
+    try:
+        if get_current_user_id() != farmer_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        farmer_requests = session.query(TransportRequest).filter_by(farmer_id=farmer_id).all()
+
+        return jsonify([{
+            "request_id" : r.request_id,
+            "pickup_location" : r.pickup_location,
+            "destination" : r.destination,
+            "pickup_date" : str(r.pickup_date),
+            "animal_type" : r.animal_type,
+            "animal_quantity" : r.animal_quantity,
+            "status" : r.status,
+            "notes" : r.notes
+        } for r in farmer_requests]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     finally:
         session.close()
 
 # PUT request to allow farmers to update their request info/status
 @transport_requests.route('/api/requests/<int:request_id>', methods=['PUT'])
+@require_role('FARMER')
 def update_request(request_id):
     session = Session()
     try:
         req = session.query(TransportRequest).filter_by(request_id=request_id).first()
         if not req:
             return jsonify({"error": "Request not found"}), 404
+
+        if req.farmer_id != get_current_user_id():
+            return jsonify({"error": "Unauthorized"}), 403
+
         if req.status != 'PENDING':
             return jsonify({"error": "Cannot edit a request that is already booked by a transporter"}), 400
 
@@ -79,11 +121,15 @@ def update_request(request_id):
 
         session.commit()
         return jsonify({"message": "Request updated"}), 200
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         session.close()
 
 # Delete request to allow farmers to cancel a request they made
 @transport_requests.route('/api/requests/<int:request_id>', methods=['DELETE'])
+@require_role('FARMER')
 def delete_request(request_id):
     session = Session()
     try:
@@ -91,8 +137,14 @@ def delete_request(request_id):
         if not req:
             return jsonify({"error": "Request not found"}), 404
 
+        if req.farmer_id != get_current_user_id():
+            return jsonify({"error": "Unauthorized"}), 403
+
         session.delete(req)
         session.commit()
         return jsonify({"message": "Request cancelled"}), 200
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         session.close()

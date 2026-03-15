@@ -14,8 +14,8 @@ def client():
 # Creation of a dummy admin to avoid having to repeat the login logic 
 def admin_token(client):
     response = client.post('/api/auth/login', json={
-        "email" : "admin@livestocklink.com",
-        "password" : "adminpass1234",
+        "email" : "leon@livestocklink.com",
+        "password" : "12345678",
         "role" : "ADMIN"
     })
     return response.get_json().get('token')

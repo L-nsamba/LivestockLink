@@ -43,6 +43,10 @@ def register():
             role = data['role']
         )
 
+        # Rejecting admin creation by non-authorized personnel on this api endpoint path  
+        if data['role'] == 'ADMIN':
+            return jsonify({"error": "Cannot register as admin"}), 403
+
         session.add(new_user)
         session.flush()
 
@@ -60,9 +64,6 @@ def register():
             )
             session.add(transporter)
 
-        # Rejecting admin creation by non-authorized personnel on this api endpoint path  
-        if data['role'] == 'ADMIN':
-            return jsonify({"error": "Cannot register as admin"}), 403
 
         session.commit()
         return jsonify({"message": "User created", "user_id": new_user.user_id}), 201

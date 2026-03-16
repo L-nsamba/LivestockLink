@@ -71,7 +71,7 @@ def get_all_users():
 
 # Get request to retrieve existing users by id
 @admin.route('/admin/users/<user_id>', methods=['GET'])
-@require_role('ADMIN')
+# @require_role('ADMIN')
 def get_user(user_id):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()

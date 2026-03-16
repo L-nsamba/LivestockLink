@@ -26,6 +26,14 @@ def require_role(*roles):
             
 
             return f(*args, **kwargs)
-        
+
         return wrapper
     return decorator
+
+
+# Helper to extract the current user's ID from the token in the request header
+def get_current_user_id():
+    auth_header = request.headers.get("Authorization")
+    token = auth_header.split(" ")[1]
+    payload = decode_token(token)
+    return payload["user_id"]

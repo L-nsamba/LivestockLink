@@ -15,7 +15,6 @@ ADMIN_KEY = os.getenv("ADMIN_REGISTRATION_KEY")
 
 # Creation of an admin
 @admin.route('/admin/register', methods=['POST'])
-@require_role('ADMIN')
 def register_admin():
     data = request.get_json()
 

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivestockLink - Farmer Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="../more_css/farmer-dashboard.css" rel="stylesheet">
+</head>
+<body>
+
+    <nav class="topnav">
+        <button class="notif-btn" onclick="switchSection('notifications')">
+            🔔
+            <span class="notif-badge" id="notif-count">
+                <!--populated by js logic-->
+            </span>
+        </button>
+    </nav>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">Livestock Link</div>
+
+            <button class="nav-item active" onclick="switchSection('find')" id="nav-find">
+                <span class="nav-icon">🔍</span> Find Transporter
+            </button>
+
+            <button class="nav-item" onclick="switchSection('history')" id="nav-history">
+                <span class="nav-icon">📋</span> History
+            </button>
+
+            <button class="nav-item" onclick="switchSection('notifications')" id="nav-notifications">
+                <span class="nav-icon">🔔</span> Notifications
+            </button>
+
+            <div class="sidebar-bottom">
+                <button class="logout-btn" onclick="handleLogout()">
+                    <span class="nav-icon">⚙️</span> Log Out
+                </button>
+            </div> 
+        </aside>
+
+        <main class="main">
+
+            <section class="section active" id="section-find">
+                <div class="page-header">
+                    <h1>Find a Transporter</h1>
+                    <p>Fill in your transport request and we'll match you with am available transporter</p>
+                </div>
+
+                <div class="form-card">
+                    <div class="form-grid">
+
+                        <div class="form-group">
+                            <label>Pickup Location <span class="required">*</span></label>
+                            <input type="text" id="pickup_location" placeholder="e.g Musanze"/>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Pickup Date <span class="required">*</span></label>
+                            <input type="datetime-local" id="pickup_date"/>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Dropoff Destination <span class="required">*</span></label>
+                            <input type="text" id="destination" placeholder="e.g Gisenyi"/>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Animal Type <span class="required">*</span></label>
+                            <div class="select-wrap">
+                                <select id="animal_type">
+                                    <option value="" disabled selected>Select Type</option>
+                                    <option value="Cattle">Cattle</option>
+                                    <option value="Goats">Goats</option>
+                                    <option value="Sheep">Sheep</option>
+                                    <option value="Pigs">Pigs</option>
+                                    <option value="Poultry">Poultry</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Animal Quantity <span class="required">*</span></label>
+                            <input type="number" id="animal_quantity" placeholder="e.g 14" min="1"/>
+                        </div>
+
+                        <div class="form-group full">
+                            <label>Notes (Optional) </label>
+                            <textarea id="notes" placeholder="Any special requirements or additional handling instructions"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="section-history">
+                <div class="page-header">
+                    <h1>Trip  History</h1>
+                    <p id="history-welcome">Welcome Back!</p>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="cb-col"> <input type="checkbox" id="select-all" onchange="toggleAll(this)"></th>
+                                <th>Transporter Name</th>
+                                <th>Pickup Location</th>
+                                <th>Dropoff Destination</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty-state">
+                                        <div>Loading your trips...</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="section" id="section-notifications">
+                <div class="page-header">
+                    <h1>Welcome Back!</h1>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1.2rem;">
+                    <span style="font-size:1.2rem;">✉️</span>
+                    <span style="font-family:'Fraunces',serif; font-size:1.5rem; font-weight:900; color:var(--navy);">Notifications</span>
+                </div>
+
+                <div class="notif-list" id="notif-list">
+                    <!--populated by js logic-->
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="trip-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Trip Receipt</span>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modal-body">
+                <!--populated by js logic-->
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    
+</body>
+</html>

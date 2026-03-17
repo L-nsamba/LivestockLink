@@ -9,7 +9,14 @@
 </head>
 <body>
 
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
     <nav class="topnav">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
         <button class="notif-btn" onclick="switchSection('notifications')">
             🔔
             <span class="notif-badge" id="notif-count">

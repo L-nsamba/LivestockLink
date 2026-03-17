@@ -94,3 +94,32 @@ def get_transporter_bookings(transporter_id):
     finally:
         session.close()
 
+
+# GET single booking details
+@bookings.route('/api/bookings/<booking_id>', methods=['GET'])
+@require_role('TRANSPORTER')
+def get_booking(booking_id):
+    session = Session()
+    try:
+        booking = session.query(Bookings).filter_by(booking_id=booking_id).first()
+
+        if not booking:
+            return jsonify({"error": "Booking not found"}), 404
+
+        # Ensure transporter can only view their own bookings
+        if booking.transporter_id != get_current_user_id():
+            return jsonify({"error": "Unauthorized"}), 403
+
+        return jsonify({
+            "booking_id": booking.booking_id,
+            "request_id": booking.request_id,
+            "transporter_id": booking.transporter_id,
+            "accepted_at": str(booking.accepted_at),
+            "status": booking.status
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+

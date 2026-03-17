@@ -123,3 +123,52 @@ def get_booking(booking_id):
     finally:
         session.close()
 
+
+# PUT - update booking status (e.g., PICKED_UP, IN_TRANSIT, DELIVERED)
+@bookings.route('/api/bookings/<booking_id>', methods=['PUT'])
+@require_role('TRANSPORTER')
+def update_booking_status(booking_id):
+    session = Session()
+    try:
+        booking = session.query(Bookings).filter_by(booking_id=booking_id).first()
+
+        if not booking:
+            return jsonify({"error": "Booking not found"}), 404
+
+        if booking.transporter_id != get_current_user_id():
+            return jsonify({"error": "Unauthorized"}), 403
+
+        data = request.get_json()
+        if 'status' not in data:
+            return jsonify({"error": "Missing required field: status"}), 400
+
+        valid_statuses = ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']
+        if data['status'] not in valid_statuses:
+            return jsonify({"error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
+
+        booking.status = data['status']
+
+        # If booking is delivered or cancelled, update the transport request status
+        if data['status'] == 'DELIVERED':
+            transport_request = session.query(TransportRequest).filter_by(
+                request_id=booking.request_id
+            ).first()
+            if transport_request:
+                transport_request.status = 'COMPLETED'
+
+        elif data['status'] == 'CANCELLED':
+            transport_request = session.query(TransportRequest).filter_by(
+                request_id=booking.request_id
+            ).first()
+            if transport_request:
+                transport_request.status = 'PENDING'  # Make it available again
+
+        session.commit()
+        return jsonify({"message": "Booking status updated successfully"}), 200
+
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+

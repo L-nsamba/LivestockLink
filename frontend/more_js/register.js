@@ -73,7 +73,7 @@ async function handleRegister() {
 
             if (response.ok) {
                 showToast('Account created! Redirecting....', 'success');
-                setTimeout(() => {window.location.href = './more_html/login.html';}, 1800);
+                setTimeout(() => {window.location.href = './login.html';}, 1800);
             } else {
                 showToast(result.error || 'Registration failed. Try again', 'error');
                 btn.disabled = false;

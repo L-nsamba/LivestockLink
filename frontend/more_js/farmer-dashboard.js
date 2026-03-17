@@ -4,10 +4,15 @@ const BASE_URL = 'http://127.0.0.1:5000';
 const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
 const USER = {
     user_id : storedUser.user_id || 0,
-    farmer_id : storedUser.farmer_id || 0,
     name : storedUser.full_name || 'Not Available',
     email  : storedUser.email || 'Not Available'
 };
+
+// Helper to build auth headers for every API call
+function authHeaders() {
+    const token = localStorage.getItem('token') || '';
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+}
 
 // Section switching logic
 function switchSection(name) {
@@ -33,10 +38,9 @@ async function submitRequest() {
     const btn = document.getElementById('submit-btn');
 
     const payload = {
-        farmer_id : USER.farmer_id,
         pickup_location : document.getElementById('pickup_location').value.trim(),
         pickup_date : document.getElementById('pickup_date').value,
-        destination : document.getElementById('destination').value.trim(),
+        destination_location : document.getElementById('destination').value.trim(),
         animal_type :  document.getElementById('animal_type').value,
         animal_quantity : parseInt(document.getElementById('animal_quantity').value),
         notes : document.getElementById('notes').value.trim() || null,
@@ -44,7 +48,7 @@ async function submitRequest() {
 
 
     // Basic field validation
-    const required = ['pickup_location', 'pickup_date', 'destination', 'animal_type', 'animal_quantity'];
+    const required = ['pickup_location', 'pickup_date', 'destination_location', 'animal_type', 'animal_quantity'];
 
     for (const f of required) {
         if (!payload[f]) {  showToast('Please fill in all required fields', 'error'); return
@@ -60,7 +64,7 @@ async function submitRequest() {
         try {
             const res = await fetch(`${BASE_URL}/api/requests`, {
                 method : 'POST',
-                headers : {'Content-Type' : 'application/json'},
+                headers : authHeaders(),
                 body : JSON.stringify(payload),
             });
             const data = await res.json();
@@ -68,12 +72,18 @@ async function submitRequest() {
             if (res.ok) {
                 showToast('Transport request submitted! ✅', 'success');
                 // Clearing form after successful request submission
-                ['pickup_location', 'pickup_date', 'destination', 'animal_quantity', 'notes'].forEach(id => {
+                ['pickup_location', 'pickup_date', 'destination_location', 'animal_quantity', 'notes'].forEach(id => {
                     document.getElementById(id).value = '';
                 });
                 document.getElementById('animal_type').selectedIndex = 0;
+                // Mark this request as seen so syncRequestNotifications doesn't double-notify
+                if (data.request_id) {
+                    const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
+                    seen.push(data.request_id);
+                    localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+                }
                 // Addition of notification to notification tab after request submitted
-                addLocalNotification('✅ Your transport request has been submitted and is awaiting a transporter.');
+                addLocalNotification(`✅ Your transport request (${payload.animal_type} → ${payload.destination_location}) has been submitted and is awaiting a transporter.`);
             } else {
                 showToast(data.error || 'Submission failed. Try again.', 'error')
             }
@@ -99,7 +109,7 @@ async function loadHistory()  {
     
     try {
         // Accessing that specific farmers transaction history stored in the requests table in the db and retrieving it with an api call
-        const res = await fetch(`${BASE_URL}/api/requests/farmer/${USER.farmer_id}`);
+        const res = await fetch(`${BASE_URL}/api/requests/farmer/${USER.user_id}`, { headers: authHeaders() });
         const requests = await res.json()
 
         if (!requests.length) {
@@ -121,7 +131,7 @@ async function loadHistory()  {
                 <td class="cb-col"><input type="checkbox" class="row-cb"/></td>
                 <td data-label="Transporter">${r.transporter_id || '<span style="color: #6b8a88">Unassigned</span'}</td>
                 <td data-label="Pickup">${r.pickup_location}</td>
-                <td data-label="Dropoff">${r.destination}</td>
+                <td data-label="Dropoff">${r.destination_location}</td>
                 <td data-label="Date">${formatDate(r.pickup_date)}</td>
                 <td data-label="Status"><span class="status-badge ${r.status.toLowerCase()}">${formatStatus(r.status)}</span></td>
                 <td data-label="">
@@ -144,30 +154,42 @@ async function loadHistory()  {
 }
 
 // Notification creation, storage and updating functions
-const localNotifs = [];
+// Notifications are stored in localStorage so they persist across page loads/logins
+const NOTIF_KEY = `notifs_${USER.user_id}`;
+const SEEN_KEY = `seen_requests_${USER.user_id}`;
+
+function getNotifs() {
+    return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+}
+
+function saveNotifs(notifs) {
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
+}
 
 function addLocalNotification(msg) {
-    localNotifs.unshift({id: Date.now(), message: msg, time: new Date().toLocaleString(), unread: true, hasMore: false})
+    const notifs = getNotifs();
+    notifs.unshift({ id: Date.now(), message: msg, time: new Date().toLocaleString(), unread: true });
+    saveNotifs(notifs);
     updateNotifCount();
 }
 
 function updateNotifCount() {
-    const unread = localNotifs.filter(n => n.unread).length;
+    const unread = getNotifs().filter(n => n.unread).length;
     document.getElementById('notif-count').textContent = unread;
     document.getElementById('sidebar-notif-count').textContent = unread;
 }
 
 function loadNotifications() {
+    const notifs = getNotifs();
     const list = document.getElementById('notif-list');
-    if (!localNotifs.length) {
+    if (!notifs.length) {
         list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><div>No notifications yet.</div></div>`;
         return;
     }
-    list.innerHTML = localNotifs.map(n => `
+    list.innerHTML = notifs.map(n => `
         <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="markRead(${n.id}, this)">
           <span class="notif-text">${n.message}</span>
           <div class="notif-meta">
-            ${n.hasMore ? `<button class="link-btn" style="display:block;margin-bottom:4px">More Info</button>` : ''}
             <span class="notif-time">${n.time}</span>
           </div>
         </div>
@@ -175,9 +197,34 @@ function loadNotifications() {
 }
 
 function markRead(id, el) {
-    const n = localNotifs.find(x => x.id === id);
-    if (n) {n.unread = false; el.classList.remove('unread'); updateNotifCount();}
+    const notifs = getNotifs();
+    const n = notifs.find(x => x.id === id);
+    if (n) { n.unread = false; saveNotifs(notifs); el.classList.remove('unread'); updateNotifCount(); }
+}
 
+// On page load, fetch the farmer's requests from the server and generate notifications
+// for any requests we haven't notified about yet (catches requests made via APIdog etc.)
+async function syncRequestNotifications() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/requests/farmer/${USER.user_id}`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const requests = await res.json();
+
+        const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
+        let changed = false;
+
+        for (const r of requests) {
+            if (!seen.includes(r.request_id)) {
+                seen.push(r.request_id);
+                addLocalNotification(`Your transport request (${r.animal_type} → ${r.destination_location}) was submitted and is awaiting a transporter.`);
+                changed = true;
+            }
+        }
+
+        if (changed) localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+    } catch (_) {
+        // silently fail — notifications will still show stored ones
+    }
 }
 
 // Trip Receipt in more info in notifications table
@@ -279,4 +326,6 @@ document.querySelectorAll('.nav-item, .logout-btn').forEach(el => {
     });
 });
 
+// On load: restore persisted notification count, then sync with server
 updateNotifCount();
+syncRequestNotifications();

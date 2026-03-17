@@ -66,3 +66,31 @@ def create_booking():
     finally:
         session.close()
 
+
+# GET all bookings for a specific transporter
+@bookings.route('/api/bookings/transporter/<transporter_id>', methods=['GET'])
+@require_role('TRANSPORTER')
+def get_transporter_bookings(transporter_id):
+    session = Session()
+    try:
+        # Ensure transporter can only view their own bookings
+        if get_current_user_id() != transporter_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        transporter_bookings = session.query(Bookings).filter_by(
+            transporter_id=transporter_id
+        ).all()
+
+        return jsonify([{
+            "booking_id": b.booking_id,
+            "request_id": b.request_id,
+            "transporter_id": b.transporter_id,
+            "accepted_at": str(b.accepted_at),
+            "status": b.status
+        } for b in transporter_bookings]), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+

@@ -16,7 +16,7 @@ body {
 .topnav {
     height: 64px;
     background: white;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #dce8e4;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -176,7 +176,7 @@ body {
     font-family: 'Fraunces', serif;
     font-size: 2rem;
     font-weight: 900;
-    color: var(--accent-blue);
+    color: #4a6fa5;
     letter-spacing: -1px;
 }
 
@@ -303,9 +303,9 @@ td {
     font-size: 0.75rem;
     font-weight: 600;
 }
-.status-badge.pending    { background: var(--pending-bg);   color: #e8a020; border: 1px solid #e8a020; }
+.status-badge.pending    { background: #f5c518;   color: #e8a020; border: 1px solid #e8a020; }
 .status-badge.complete   { background: whitesmoke;  color: #27ae60; border: 1px solid #27ae60; }
-.status-badge.cancelled  { background: var(--cancelled-bg); color: var(--cancelled); border: 1px solid var(--cancelled); }
+.status-badge.cancelled  { background: red; color: red; border: 1px solid red; }
 .status-badge.booked     { background: #eef2f9; color: #4a6fa5; border: 1px solid #4a6fa5; }
 .status-badge.in_transit { background: #fff3e0; color: #e65100; border: 1px solid #e65100; }
 
@@ -336,6 +336,9 @@ input[type="checkbox"] {
     padding: 3rem;
     color: #6b8a88;
 }
+
+.empty-state .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
 
 .welcome-bar {
     margin-bottom: 0.3rem;
@@ -378,7 +381,7 @@ input[type="checkbox"] {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .modal {
-    background: var(--white);
+    background: white;
     border-radius: 20px;
     padding: 2.2rem;
     width: 90%;
@@ -485,8 +488,8 @@ input[type="checkbox"] {
 }
 
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast.success { background: var(--complete); }
-.toast.error   { background: var(--cancelled); }
+.toast.success { background: green; }
+.toast.error   { background: red; }
 
 .spinner {
     display: inline-block;
@@ -607,7 +610,7 @@ input[type="checkbox"] {
         content: attr(data-label);
         font-size: 0.72rem;
         font-weight: 600;
-        color: var(--muted);
+        color: #6b8a88;
         text-transform: uppercase;
         letter-spacing: 0.4px;
         min-width: 90px;

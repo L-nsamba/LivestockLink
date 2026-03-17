@@ -536,37 +536,6 @@ input[type="checkbox"] {
 .sidebar-overlay.open { display: block; }
 
 /*Responsive design*/
-@media (max-width: 860px) {
-    .sidebar {
-        width: 72px;
-        padding: 1.5rem 0;
-        align-items: center;
-        border-radius: 0 16px 16px 0;
-    }
-
-    .sidebar-logo {
-        display: none;
-    }
-
-    .nav-item {
-        justify-content: center;
-        padding: 0.85rem;
-        width: 48px;
-        border-radius: 12px;
-        gap: 0;
-    }
-
-    .nav-item span:not(.nav-icon):not(.nav-badge) { display: none; }
-    .nav-badge { position: absolute; top: 4px; right: 4px; padding: 1px 5px; font-size: 0.6rem; }
-    .nav-item.active::before { left: 0; border-radius: 0 4px 4px 0; }
-
-    .logout-btn { justify-content: center; padding: 0.85rem; width: 48px; gap: 0; }
-    .logout-btn span:not(.nav-icon) { display: none; }
-
-    .main { padding: 1.8rem 1.5rem; }
-    .form-card { padding: 1.5rem; }
-}
-
 @media (max-width: 768px) {
     .sidebar {
         width: 240px;

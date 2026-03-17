@@ -4,3 +4,65 @@
 # GET (View single booking detail) --> /api/bookings/<booking_id>
 # PUT (Updating status(picked up, in transit, delivered)) --> /api/bookings/<booking_id>/status
 # DELETE (Transporter cancels or rejects booking) --> /api/bookings/<booking_id>
+
+from flask import Blueprint, request, jsonify
+from database.db import Session
+from models.booking import Bookings
+from models.transport_request import TransportRequest
+from backend.utils.auth_decorator import require_role, get_current_user_id
+
+bookings = Blueprint('bookings', __name__)
+
+# POST - transporter accepts a transport request and creates a booking
+@bookings.route('/api/bookings', methods=['POST'])
+@require_role('TRANSPORTER')
+def create_booking():
+    session = Session()
+    try:
+        data = request.get_json()
+        if 'request_id' not in data:
+            return jsonify({"error": "Missing required field: request_id"}), 400
+
+        transporter_id = get_current_user_id()
+
+        # Check if the request exists and is still pending
+        transport_request = session.query(TransportRequest).filter_by(
+            request_id=data['request_id']
+        ).first()
+
+        if not transport_request:
+            return jsonify({"error": "Transport request not found"}), 404
+
+        if transport_request.status != 'PENDING':
+            return jsonify({"error": "Request is no longer available"}), 400
+
+        # Check if booking already exists for this request
+        existing_booking = session.query(Bookings).filter_by(
+            request_id=data['request_id']
+        ).first()
+
+        if existing_booking:
+            return jsonify({"error": "This request has already been booked"}), 400
+
+        # Create the booking
+        new_booking = Bookings(
+            request_id=data['request_id'],
+            transporter_id=transporter_id
+        )
+
+        # Update the transport request status to BOOKED
+        transport_request.status = 'BOOKED'
+
+        session.add(new_booking)
+        session.commit()
+        return jsonify({
+            "message": "Booking created successfully",
+            "booking_id": new_booking.booking_id
+        }), 201
+
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+

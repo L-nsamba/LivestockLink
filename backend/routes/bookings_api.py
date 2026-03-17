@@ -14,7 +14,7 @@ from backend.utils.auth_decorator import require_role, get_current_user_id
 bookings = Blueprint('bookings', __name__)
 
 # POST - transporter accepts a transport request and creates a booking
-@bookings.route('/api/bookings', methods=['POST'])
+@bookings.route('/bookings', methods=['POST'])
 @require_role('TRANSPORTER')
 def create_booking():
     session = Session()
@@ -68,7 +68,7 @@ def create_booking():
 
 
 # GET all bookings for a specific transporter
-@bookings.route('/api/bookings/transporter/<transporter_id>', methods=['GET'])
+@bookings.route('/bookings/transporter/<transporter_id>', methods=['GET'])
 @require_role('TRANSPORTER')
 def get_transporter_bookings(transporter_id):
     session = Session()
@@ -96,7 +96,7 @@ def get_transporter_bookings(transporter_id):
 
 
 # GET single booking details
-@bookings.route('/api/bookings/<booking_id>', methods=['GET'])
+@bookings.route('/bookings/<booking_id>', methods=['GET'])
 @require_role('TRANSPORTER')
 def get_booking(booking_id):
     session = Session()
@@ -125,7 +125,7 @@ def get_booking(booking_id):
 
 
 # PUT - update booking status (e.g., PICKED_UP, IN_TRANSIT, DELIVERED)
-@bookings.route('/api/bookings/<booking_id>', methods=['PUT'])
+@bookings.route('/bookings/<booking_id>', methods=['PUT'])
 @require_role('TRANSPORTER')
 def update_booking_status(booking_id):
     session = Session()
@@ -174,7 +174,7 @@ def update_booking_status(booking_id):
 
 
 # DELETE - cancel a booking
-@bookings.route('/api/bookings/<booking_id>', methods=['DELETE'])
+@bookings.route('/bookings/<booking_id>', methods=['DELETE'])
 @require_role('TRANSPORTER')
 def cancel_booking(booking_id):
     session = Session()

@@ -6,6 +6,7 @@ from flask_cors import CORS
 from backend.routes.auth_api import auth
 from backend.routes.admin import admin
 from backend.routes.transport_requests_api import transport_requests
+from backend.routes.bookings_api import bookings
 
 def create_app():
     app = Flask(__name__)

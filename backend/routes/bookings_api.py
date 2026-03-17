@@ -172,3 +172,39 @@ def update_booking_status(booking_id):
     finally:
         session.close()
 
+
+# DELETE - cancel a booking
+@bookings.route('/api/bookings/<booking_id>', methods=['DELETE'])
+@require_role('TRANSPORTER')
+def cancel_booking(booking_id):
+    session = Session()
+    try:
+        booking = session.query(Bookings).filter_by(booking_id=booking_id).first()
+
+        if not booking:
+            return jsonify({"error": "Booking not found"}), 404
+
+        if booking.transporter_id != get_current_user_id():
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Don't allow cancellation if already delivered
+        if booking.status == 'DELIVERED':
+            return jsonify({"error": "Cannot cancel a delivered booking"}), 400
+
+        # Reset the transport request status to PENDING
+        transport_request = session.query(TransportRequest).filter_by(
+            request_id=booking.request_id
+        ).first()
+
+        if transport_request:
+            transport_request.status = 'PENDING'
+
+        session.delete(booking)
+        session.commit()
+        return jsonify({"message": "Booking cancelled successfully"}), 200
+
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()

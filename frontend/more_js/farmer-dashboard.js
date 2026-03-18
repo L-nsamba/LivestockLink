@@ -72,7 +72,7 @@ async function submitRequest() {
             if (res.ok) {
                 showToast('Transport request submitted! ✅', 'success');
                 // Clearing form after successful request submission
-                ['pickup_location', 'pickup_date', 'destination_location', 'animal_quantity', 'notes'].forEach(id => {
+                ['pickup_location', 'pickup_date', 'destination', 'animal_quantity', 'notes'].forEach(id => {
                     document.getElementById(id).value = '';
                 });
                 document.getElementById('animal_type').selectedIndex = 0;
@@ -175,8 +175,10 @@ function addLocalNotification(msg) {
 
 function updateNotifCount() {
     const unread = getNotifs().filter(n => n.unread).length;
-    document.getElementById('notif-count').textContent = unread;
-    document.getElementById('sidebar-notif-count').textContent = unread;
+    const notifCount = document.getElementById('notif-count');
+    const sidebarCount = document.getElementById('sidebar-notif-count');
+    if (notifCount) notifCount.textContent = unread;
+    if (sidebarCount) sidebarCount.textContent = unread;
 }
 
 function loadNotifications() {

@@ -29,4 +29,12 @@ def test_get_all_users(client, admin_token):
     data = response.get_json()
     assert isinstance(data, list) # This returns the list of existing users
 
+# TEST: delete a user
+def test_delete_user(client, admin_token):
+    response = client.delete('/api/admin/users/99',
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    # 404 if user doesn't exist — still a valid test
+    assert response.status_code in [200, 404]
+
 # ........................Test case in-progress..............

@@ -66,18 +66,7 @@ def register():
 
 
         session.commit()
-        # Token creation for session management when a user logins in after registration
-        token = generate_token(new_user.user_id, new_user.role)
-        return jsonify({
-            "message": "User created",
-            "token": token,
-            "user": {
-                "user_id": new_user.user_id,
-                "full_name": new_user.full_name,
-                "email": new_user.email,
-                "role": new_user.role
-            }
-        }), 201
+        return jsonify({"message": "User created", "user_id": new_user.user_id}), 201
     except Exception as e:
         session.rollback()
         return jsonify({"error": str(e)}), 500

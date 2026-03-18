@@ -9,6 +9,7 @@
 from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.transport_request import TransportRequest
+from models.farmer import Farmer
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 transport_requests = Blueprint('transport_request', __name__)
@@ -77,7 +78,7 @@ def get_all_requests():
 def get_farmer_requests(farmer_id):
     session = Session()
     try:
-        if str(get_current_user_id()) != str(farmer_id):
+        if get_current_user_id() != farmer_id:
             return jsonify({"error": "Unauthorized"}), 403
 
         farmer_requests = session.query(TransportRequest).filter_by(farmer_id=farmer_id).all()

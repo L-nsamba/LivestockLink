@@ -56,10 +56,10 @@ async function handleLogin() {
 
             // Redirecting to the respective role dashboard
             setTimeout(() => {
-                userRole = (result.user?.role || role).toUpperCase();
-                if (userRole === 'FARMER') window.location.href = './more_html/farmer-dashboard.html';
-                else if (userRole === 'TRANSPORTER') window.location.href = './more_html/transporter-dashboard.html';
-                else if (userRole === 'ADMIN') window.location.href = './more_html/admin-dashboard.html';
+                const userRole = (result.user?.role || role).toUpperCase();
+                if (userRole === 'FARMER') window.location.href = '../more_html/farmer-dashboard.html';
+                else if (userRole === 'TRANSPORTER') window.location.href = '../more_html/transporter-dashboard.html';
+                else if (userRole === 'ADMIN') window.location.href = '../more_html/admin-dashboard.html';
 
             }, 1200);
         } else {

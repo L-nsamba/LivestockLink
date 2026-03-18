@@ -72,8 +72,16 @@ async function handleRegister() {
         const result = await  response.json();
 
             if (response.ok) {
+                localStorage.setItem('token', result.token || '');
+                localStorage.setItem('user', JSON.stringify(result.user || {}));
                 showToast('Account created! Redirecting....', 'success');
-                setTimeout(() => {window.location.href = './more_html/login.html';}, 1800);
+                const role = result.user?.role;
+                setTimeout(() => {
+                    if (role === 'FARMER') window.location.href = '../more_html/farmer-dashboard.html';
+                    else if (role === 'TRANSPORTER') window.location.href = '../more_html/transporter-dashboard.html';
+                    else if (role === 'ADMIN') window.location.href = '../more_html/admin-dashboard.html';
+                    else window.location.href = './login.html';
+                }, 1800);
             } else {
                 showToast(result.error || 'Registration failed. Try again', 'error');
                 btn.disabled = false;

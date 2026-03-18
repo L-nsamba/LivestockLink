@@ -1,15 +1,13 @@
 # API endpoint methods
-# POST (create transport request) --> /api/requests/
-# GET (View pending requests) --> /api/requests/
+# POST (create transport request) --> /api/requests
+# GET (View pending requests) --> /api/requests
 # GET (Farmer viewing own history) --> /api/requests/farmer/<farmer_id>
-# GET (View single request) --> /api/requests/<request_id>
 # PUT (Edit a request) --> /api/requests/<request_id>
 # DELETE (Farmer cancels a request) --> /api/requests/<request_id>
 
 from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.transport_request import TransportRequest
-from models.farmer import Farmer
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 transport_requests = Blueprint('transport_request', __name__)
@@ -65,7 +63,8 @@ def get_all_requests():
             "animal_type" : r.animal_type,
             "animal_quantity" : r.animal_quantity,
             "status" : r.status,
-            "notes" : r.notes
+            "notes" : r.notes,
+            "created_at" : str(r.created_at),
         } for r in pending_requests]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -85,21 +84,23 @@ def get_farmer_requests(farmer_id):
 
         return jsonify([{
             "request_id" : r.request_id,
+            "farmer_id" : r.farmer_id,
             "pickup_location" : r.pickup_location,
             "destination_location" : r.destination_location,
             "pickup_date" : str(r.pickup_date),
             "animal_type" : r.animal_type,
             "animal_quantity" : r.animal_quantity,
             "status" : r.status,
-            "notes" : r.notes
+            "notes" : r.notes,
+            "created_at" : str(r.created_at),
         } for r in farmer_requests]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         session.close()
 
-# PUT request to allow farmers to update their request info/status
-@transport_requests.route('/api/requests/<int:request_id>', methods=['PUT'])
+# PUT request to allow farmers to update their PENDING request details
+@transport_requests.route('/api/requests/<request_id>', methods=['PUT'])
 @require_role('FARMER')
 def update_request(request_id):
     session = Session()
@@ -112,12 +113,21 @@ def update_request(request_id):
             return jsonify({"error": "Unauthorized"}), 403
 
         if req.status != 'PENDING':
-            return jsonify({"error": "Cannot edit a request that is already booked by a transporter"}), 400
+            return jsonify({"error": "Cannot edit a request that is not PENDING"}), 400
 
         data = request.get_json()
-        for field in ['pickup_location', 'destination', 'pickup_date', 'animal_type', 'animal_quantity', 'notes']:
-            if field in data:
-                setattr(req, field, data[field])
+
+        if 'status' in data:
+            return jsonify({"error": "Status cannot be changed directly; use the booking flow"}), 400
+
+        editable_fields = ['pickup_location', 'destination_location', 'pickup_date', 'animal_type', 'animal_quantity', 'notes']
+        updates = {f: data[f] for f in editable_fields if f in data}
+
+        if not updates:
+            return jsonify({"error": "No valid fields to update"}), 400
+
+        for field, value in updates.items():
+            setattr(req, field, value)
 
         session.commit()
         return jsonify({"message": "Request updated"}), 200
@@ -127,8 +137,8 @@ def update_request(request_id):
     finally:
         session.close()
 
-# Delete request to allow farmers to cancel a request they made
-@transport_requests.route('/api/requests/<int:request_id>', methods=['DELETE'])
+# DELETE request to allow farmers to cancel a PENDING request
+@transport_requests.route('/api/requests/<request_id>', methods=['DELETE'])
 @require_role('FARMER')
 def delete_request(request_id):
     session = Session()
@@ -139,6 +149,9 @@ def delete_request(request_id):
 
         if req.farmer_id != get_current_user_id():
             return jsonify({"error": "Unauthorized"}), 403
+
+        if req.status != 'PENDING':
+            return jsonify({"error": f"Cannot cancel a request with status '{req.status}'"}), 400
 
         session.delete(req)
         session.commit()

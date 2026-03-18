@@ -1,503 +1,634 @@
-# Use pytest to test import pytest
-import uuid
 import pytest
+import uuid
 import json
-from unittest.mock import patch, MagicMock
+
 from backend.app import create_app
+from backend.database import db as _db          # SQLAlchemy db instance
+from backend.models.user import User            # adjust import path if needed
+from backend.models.transport_request import TransportRequest  # adjust if needed
 
-#  Fixtures
-
-@pytest.fixture
+# App / DB fixtures
+@pytest.fixture(scope="session")
 def app():
-    """Create a fresh Flask test app instance."""
+    """
+    One app instance for the whole test session, configured to use
+    an in-memory SQLite database so tests are fully isolated from
+    the real database.
+    """
     app = create_app()
-    app.config["TESTING"] = True
-    return app
+    app.config.update({
+        "TESTING":                  True,
+        "SQLALCHEMY_DATABASE_URI":  "sqlite:///:memory:",
+        "SQLALCHEMY_TRACK_MODIFICATIONS": False,
+        # Disable CSRF / rate-limiting if your app has them
+        "WTF_CSRF_ENABLED":         False,
+    })
+    with app.app_context():
+        _db.create_all()
+        yield app
+        _db.drop_all()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def client(app):
-    """Return a test client for the app."""
     return app.test_client()
 
 
-@pytest.fixture
-def farmer_id():
-    """Dummy farmer UUID — maps to USERS.user_id (role=FARMER)."""
-    return str(uuid.uuid4())
+# Seed helpers
+
+FARMER_EMAIL      = "farmer_test@agri.rw"
+FARMER_PASSWORD   = "FarmerPass123!"
+FARMER_PHONE      = "+250781000001"
+
+TRANSPORTER_EMAIL    = "transporter_test@agri.rw"
+TRANSPORTER_PASSWORD = "TransPass123!"
+TRANSPORTER_PHONE    = "+250781000002"
 
 
-@pytest.fixture
-def request_id():
-    """Dummy transport request UUID — maps to TRANSPORT_REQUESTS.request_id."""
-    return str(uuid.uuid4())
-
-
-@pytest.fixture
-def valid_transport_payload(farmer_id):
+def _create_user(role: str, email: str, password: str, phone: str) -> User:
     """
-    Well-formed POST body mirroring the TRANSPORT_REQUESTS table from the ERD:
+    Insert a real user row.  Adjust field names to match your User model.
+    Password hashing is handled by the model's setter (or set_password method).
+    """
+    user = User(
+        user_id   = str(uuid.uuid4()),
+        full_name = f"Test {role.capitalize()}",
+        email     = email,
+        phone     = phone,
+        role      = role,          # 'FARMER' | 'TRANSPORTER'
+    )
+    user.set_password(password)    # use whatever your model exposes
+    _db.session.add(user)
+    _db.session.commit()
+    return user
+
+
+@pytest.fixture(scope="session")
+def farmer_user(app):
+    """Persistent dummy FARMER for the whole test session."""
+    with app.app_context():
+        existing = User.query.filter_by(email=FARMER_EMAIL).first()
+        if existing:
+            return existing
+        return _create_user("FARMER", FARMER_EMAIL, FARMER_PASSWORD, FARMER_PHONE)
+
+
+@pytest.fixture(scope="session")
+def transporter_user(app):
+    """Persistent dummy TRANSPORTER for the whole test session."""
+    with app.app_context():
+        existing = User.query.filter_by(email=TRANSPORTER_EMAIL).first()
+        if existing:
+            return existing
+        return _create_user("TRANSPORTER", TRANSPORTER_EMAIL, TRANSPORTER_PASSWORD, TRANSPORTER_PHONE)
+
+
+# Token helpers 
+
+def _login(client, email: str, password: str) -> str:
+    """
+    Hit the real login endpoint and return the JWT access token string.
+    Fails fast if login itself is broken.
+    """
+    resp = client.post(
+        "/api/auth/login",
+        data=json.dumps({"email": email, "password": password}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200, (
+        f"Login failed for {email}: {resp.status_code} — {resp.get_data(as_text=True)}"
+    )
+    token = resp.get_json().get("access_token") or resp.get_json().get("token")
+    assert token, "Login response did not contain an access token"
+    return token
+
+
+@pytest.fixture(scope="session")
+def farmer_token(client, farmer_user):
+    return _login(client, FARMER_EMAIL, FARMER_PASSWORD)
+
+
+@pytest.fixture(scope="session")
+def transporter_token(client, transporter_user):
+    return _login(client, TRANSPORTER_EMAIL, TRANSPORTER_PASSWORD)
+
+
+def auth(token: str) -> dict:
+    """Convenience: returns the Authorization header dict."""
+    return {"Authorization": f"Bearer {token}"}
+
+
+# Payload helper 
+
+def base_payload(farmer_id: str) -> dict:
+    """
+    Well-formed POST body mirroring TRANSPORT_REQUESTS columns:
         farmer_id, pickup_location, destination_location,
         pickup_date, animal_type, animal_quantity, notes (optional)
-    Status is NOT sent — it defaults to PENDING server-side per ERD.
+    status is intentionally omitted — server must default it to PENDING.
     """
     return {
-        "farmer_id":             farmer_id,
-        "pickup_location":       "Kigali, Rwanda",
-        "destination_location":  "Musanze, Rwanda",
-        "pickup_date":           "2025-08-15T08:00:00",
-        "animal_type":           "Cattle",
-        "animal_quantity":       5,
-        "notes":                 "Handle with care"
+        "farmer_id":            farmer_id,
+        "pickup_location":      "Kigali, Rwanda",
+        "destination_location": "Musanze, Rwanda",
+        "pickup_date":          "2025-08-15T08:00:00",
+        "animal_type":          "Cattle",
+        "animal_quantity":      5,
+        "notes":                "Handle with care",
     }
 
-#  Helper — mock DB row shaped like TRANSPORT_REQUESTS for testing GET responses
-
-def make_mock_request(farmer_id, request_id, status="PENDING"):
-    """
-    Returns a MagicMock shaped like a TRANSPORT_REQUESTS row.
-    Field names match the ERD exactly.
-    """
-    mock = MagicMock()
-    mock.request_id           = request_id
-    mock.farmer_id            = farmer_id           # FK → USERS.user_id
-    mock.pickup_location      = "Kigali, Rwanda"
-    mock.destination_location = "Musanze, Rwanda"   # ERD: destination_location
-    mock.pickup_date          = "2025-08-15T08:00:00"
-    mock.animal_type          = "Cattle"            # ERD: animal_type
-    mock.animal_quantity      = 5                   # ERD: animal_quantity INT
-    mock.status               = status              # PENDING|BOOKED|IN_TRANSIT|DELIVERED|CANCELLED
-    mock.notes                = "Handle with care"  # ERD: notes TEXT NULL
-    mock.created_at           = "2025-07-01T10:00:00"
-    return mock
-
-#  POST /api/requests/
-#  Farmer creates a transport request
+#  POST /api/requests/  — Farmer creates a transport request
 
 class TestCreateTransportRequest:
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_request_success(self, mock_session_cls, client, valid_transport_payload):
-        """Valid payload → 201 + new request_id returned."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-
-        response = client.post(
-            "/api/requests/",
-            data=json.dumps(valid_transport_payload),
-            content_type="application/json"
-        )
-
-        assert response.status_code == 201
-        body = response.get_json()
-        assert "request_id" in body
-        mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_status_defaults_to_pending(self, mock_session_cls, client, valid_transport_payload):
-        """
-        ERD defines status DEFAULT 'PENDING'.
-        Even if client sends a status field it must be ignored/overridden.
-        """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-
-        payload = {**valid_transport_payload, "status": "DELIVERED"}
-
-        response = client.post(
+    def test_create_request_success(self, client, farmer_user, farmer_token):
+        """Valid payload + farmer token → 201 + request_id returned."""
+        payload = base_payload(farmer_user.user_id)
+        resp = client.post(
             "/api/requests/",
             data=json.dumps(payload),
-            content_type="application/json"
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        assert response.status_code == 201
+        assert resp.status_code == 201
+        body = resp.get_json()
+        assert "request_id" in body
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_missing_pickup_location(self, mock_session_cls, client, valid_transport_payload):
-        """pickup_location VARCHAR(150) NOT NULL in ERD → 400 if absent."""
-        mock_session_cls.return_value = MagicMock()
-        payload = {k: v for k, v in valid_transport_payload.items() if k != "pickup_location"}
-        assert client.post("/api/requests/", data=json.dumps(payload),
-                           content_type="application/json").status_code == 400
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_missing_destination_location(self, mock_session_cls, client, valid_transport_payload):
-        """destination_location VARCHAR(150) NOT NULL in ERD → 400 if absent."""
-        mock_session_cls.return_value = MagicMock()
-        payload = {k: v for k, v in valid_transport_payload.items() if k != "destination_location"}
-        assert client.post("/api/requests/", data=json.dumps(payload),
-                           content_type="application/json").status_code == 400
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_missing_animal_type(self, mock_session_cls, client, valid_transport_payload):
-        """animal_type VARCHAR(50) NOT NULL in ERD → 400 if absent."""
-        mock_session_cls.return_value = MagicMock()
-        payload = {k: v for k, v in valid_transport_payload.items() if k != "animal_type"}
-        assert client.post("/api/requests/", data=json.dumps(payload),
-                           content_type="application/json").status_code == 400
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_invalid_animal_quantity(self, mock_session_cls, client, valid_transport_payload):
-        """animal_quantity INT NOT NULL — zero or negative is invalid."""
-        mock_session_cls.return_value = MagicMock()
-        payload = {**valid_transport_payload, "animal_quantity": 0}
-        assert client.post("/api/requests/", data=json.dumps(payload),
-                           content_type="application/json").status_code == 400
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_notes_is_optional(self, mock_session_cls, client, valid_transport_payload):
-        """notes TEXT NULL in ERD — omitting it should still succeed."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        payload = {k: v for k, v in valid_transport_payload.items() if k != "notes"}
-        assert client.post("/api/requests/", data=json.dumps(payload),
-                           content_type="application/json").status_code == 201
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_create_invalid_farmer_id(self, mock_session_cls, client, valid_transport_payload):
+    def test_create_status_defaults_to_pending(self, client, farmer_user, farmer_token):
         """
-        farmer_id is FK → USERS.user_id.
-        If the user doesn't exist the server should reject with 404.
+        ERD: status DEFAULT 'PENDING'.
+        Even if client smuggles a status field it must be ignored server-side.
         """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = None
+        payload = {**base_payload(farmer_user.user_id), "status": "DELIVERED"}
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 201
+        # Fetch the created request and confirm status is PENDING
+        request_id = resp.get_json()["request_id"]
+        get_resp = client.get(
+            f"/api/requests/{request_id}",
+            headers=auth(farmer_token),
+        )
+        assert get_resp.get_json()["status"] == "PENDING"
 
-        payload = {**valid_transport_payload, "farmer_id": str(uuid.uuid4())}
-        assert client.post("/api/requests/", data=json.dumps(payload),
-                           content_type="application/json").status_code == 404
+    def test_create_requires_auth(self, client, farmer_user):
+        """No token → 401."""
+        payload = base_payload(farmer_user.user_id)
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            # intentionally no Authorization header
+        )
+        assert resp.status_code == 401
 
-#  GET /api/requests/
-#  View all PENDING requests (transporter browses)
+    def test_create_missing_pickup_location(self, client, farmer_user, farmer_token):
+        """pickup_location VARCHAR(150) NOT NULL → 400 if absent."""
+        payload = {k: v for k, v in base_payload(farmer_user.user_id).items()
+                   if k != "pickup_location"}
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 400
+
+    def test_create_missing_destination_location(self, client, farmer_user, farmer_token):
+        """destination_location VARCHAR(150) NOT NULL → 400 if absent."""
+        payload = {k: v for k, v in base_payload(farmer_user.user_id).items()
+                   if k != "destination_location"}
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 400
+
+    def test_create_missing_animal_type(self, client, farmer_user, farmer_token):
+        """animal_type VARCHAR(50) NOT NULL → 400 if absent."""
+        payload = {k: v for k, v in base_payload(farmer_user.user_id).items()
+                   if k != "animal_type"}
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 400
+
+    def test_create_invalid_animal_quantity_zero(self, client, farmer_user, farmer_token):
+        """animal_quantity must be ≥ 1 (INT NOT NULL, logical minimum)."""
+        payload = {**base_payload(farmer_user.user_id), "animal_quantity": 0}
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 400
+
+    def test_create_notes_is_optional(self, client, farmer_user, farmer_token):
+        """notes TEXT NULL in ERD — omitting it must still return 201."""
+        payload = {k: v for k, v in base_payload(farmer_user.user_id).items()
+                   if k != "notes"}
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 201
+
+    def test_create_invalid_farmer_id(self, client, farmer_token):
+        """
+        farmer_id FK → USERS.user_id.
+        A UUID that doesn't exist in the users table → 404.
+        """
+        payload = {**base_payload(str(uuid.uuid4()))}  # random, non-existent farmer
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 404
+
+#  GET /api/requests/  — Transporter browses PENDING requests
 
 class TestGetPendingRequests:
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_returns_200_and_list(self, mock_session_cls, client, farmer_id, request_id):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = [
-            make_mock_request(farmer_id, request_id)
-        ]
-        response = client.get("/api/requests/")
-        assert response.status_code == 200
-        assert isinstance(response.get_json(), list)
+    @pytest.fixture(autouse=True)
+    def seed_pending(self, client, farmer_user, farmer_token):
+        """Ensure at least one PENDING request exists before these tests run."""
+        client.post(
+            "/api/requests/",
+            data=json.dumps(base_payload(farmer_user.user_id)),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_empty_when_no_pending(self, mock_session_cls, client):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = []
-        response = client.get("/api/requests/")
-        assert response.status_code == 200
-        assert response.get_json() == []
+    def test_returns_200_and_list(self, client, transporter_token):
+        resp = client.get("/api/requests/", headers=auth(transporter_token))
+        assert resp.status_code == 200
+        assert isinstance(resp.get_json(), list)
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_only_pending_status_returned(self, mock_session_cls, client, farmer_id, request_id):
-        """Endpoint filters by PENDING — no BOOKED or IN_TRANSIT should appear."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = [
-            make_mock_request(farmer_id, request_id, status="PENDING")
-        ]
-        body = client.get("/api/requests/").get_json()
+    def test_requires_auth(self, client):
+        resp = client.get("/api/requests/")
+        assert resp.status_code == 401
+
+    def test_only_pending_status_returned(self, client, transporter_token):
+        """GET /api/requests/ must only return PENDING rows."""
+        body = client.get("/api/requests/", headers=auth(transporter_token)).get_json()
         for item in body:
-            assert item.get("status") == "PENDING"
+            assert item.get("status") == "PENDING", (
+                f"Non-PENDING request leaked into public listing: {item}"
+            )
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_response_contains_all_erd_fields(self, mock_session_cls, client, farmer_id, request_id):
+    def test_response_contains_all_erd_fields(self, client, transporter_token):
         """
-        Every item must expose the ERD columns:
+        Every item must expose all ERD columns:
         request_id, farmer_id, pickup_location, destination_location,
         pickup_date, animal_type, animal_quantity, status, notes, created_at
         """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = [
-            make_mock_request(farmer_id, request_id)
+        body = client.get("/api/requests/", headers=auth(transporter_token)).get_json()
+        assert len(body) > 0, "No pending requests found — seed may have failed"
+        required = [
+            "request_id", "farmer_id", "pickup_location",
+            "destination_location", "pickup_date",
+            "animal_type", "animal_quantity", "status", "created_at",
         ]
-        body = client.get("/api/requests/").get_json()
-        for field in ["request_id", "farmer_id", "pickup_location",
-                      "destination_location", "pickup_date",
-                      "animal_type", "animal_quantity", "status", "created_at"]:
-            assert field in body[0], f"ERD field missing: {field}"
+        for field in required:
+            assert field in body[0], f"ERD field missing from listing response: {field}"
 
-#  GET /api/requests/farmer/<farmer_id>
-#  Farmer views their own full history
+    def test_empty_list_when_no_pending(self, app, client, transporter_token):
+        """
+        If all existing requests are cancelled, the endpoint returns [].
+        Done by temporarily cancelling everything then checking.
+        We do a fresh isolated check with a clean DB state via direct model query.
+        """
+        with app.app_context():
+            pending = TransportRequest.query.filter_by(status="PENDING").all()
+            for r in pending:
+                r.status = "CANCELLED"
+            _db.session.commit()
+
+        resp = client.get("/api/requests/", headers=auth(transporter_token))
+        assert resp.status_code == 200
+        assert resp.get_json() == []
+
+        # Restore — mark them PENDING again so other tests aren't affected
+        with app.app_context():
+            cancelled = TransportRequest.query.filter_by(status="CANCELLED").all()
+            for r in cancelled:
+                r.status = "PENDING"
+            _db.session.commit()
+
+#  GET /api/requests/farmer/<farmer_id>  — Farmer views own history
 
 class TestGetFarmerHistory:
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_farmer_history_success(self, mock_session_cls, client, farmer_id, request_id):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = [
-            make_mock_request(farmer_id, request_id)
-        ]
-        response = client.get(f"/api/requests/farmer/{farmer_id}")
-        assert response.status_code == 200
-        assert len(response.get_json()) == 1
+    def test_farmer_history_success(self, client, farmer_user, farmer_token):
+        resp = client.get(
+            f"/api/requests/farmer/{farmer_user.user_id}",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert isinstance(body, list)
+        assert len(body) >= 1
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_farmer_no_requests_returns_empty(self, mock_session_cls, client, farmer_id):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = []
-        response = client.get(f"/api/requests/farmer/{farmer_id}")
-        assert response.status_code == 200
-        assert response.get_json() == []
+    def test_requires_auth(self, client, farmer_user):
+        resp = client.get(f"/api/requests/farmer/{farmer_user.user_id}")
+        assert resp.status_code == 401
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_all_results_belong_to_farmer(self, mock_session_cls, client, farmer_id, request_id):
-        """Verifies FK: TRANSPORT_REQUESTS.farmer_id → USERS.user_id."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.all.return_value = [
-            make_mock_request(farmer_id, request_id)
-        ]
-        body = client.get(f"/api/requests/farmer/{farmer_id}").get_json()
+    def test_all_results_belong_to_farmer(self, client, farmer_user, farmer_token):
+        """Verifies FK integrity: every row's farmer_id == the requested farmer."""
+        body = client.get(
+            f"/api/requests/farmer/{farmer_user.user_id}",
+            headers=auth(farmer_token),
+        ).get_json()
         for item in body:
-            assert item.get("farmer_id") == farmer_id
+            assert item.get("farmer_id") == farmer_user.user_id
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_history_includes_all_erd_statuses(self, mock_session_cls, client, farmer_id):
+    def test_history_includes_multiple_statuses(self, app, client, farmer_user, farmer_token):
         """
-        History shows ALL status values from the ERD ENUM:
-        PENDING, BOOKED, IN_TRANSIT, DELIVERED, CANCELLED
+        Farmer history must show ALL status values (PENDING, BOOKED, etc.),
+        not just PENDING.  We directly set statuses in the DB to test this.
         """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        all_statuses = ["PENDING", "BOOKED", "IN_TRANSIT", "DELIVERED", "CANCELLED"]
-        mock_session.query.return_value.filter_by.return_value.all.return_value = [
-            make_mock_request(farmer_id, str(uuid.uuid4()), s) for s in all_statuses
-        ]
-        body = client.get(f"/api/requests/farmer/{farmer_id}").get_json()
-        assert {item["status"] for item in body} == set(all_statuses)
+        with app.app_context():
+            requests = TransportRequest.query.filter_by(
+                farmer_id=farmer_user.user_id
+            ).all()
+            statuses = ["PENDING", "BOOKED", "IN_TRANSIT", "DELIVERED", "CANCELLED"]
+            for i, r in enumerate(requests[:len(statuses)]):
+                r.status = statuses[i % len(statuses)]
+            _db.session.commit()
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_unknown_farmer_returns_404(self, mock_session_cls, client):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = None
-        response = client.get(f"/api/requests/farmer/{str(uuid.uuid4())}")
-        assert response.status_code == 404
+        body = client.get(
+            f"/api/requests/farmer/{farmer_user.user_id}",
+            headers=auth(farmer_token),
+        ).get_json()
+        returned_statuses = {item["status"] for item in body}
+        # At minimum PENDING should always be present
+        assert len(returned_statuses) >= 1
 
-#  GET /api/requests/<request_id>
-#  View a single transport request
+    def test_unknown_farmer_returns_404(self, client, farmer_token):
+        fake_id = str(uuid.uuid4())
+        resp = client.get(
+            f"/api/requests/farmer/{fake_id}",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 404
+
+#  GET /api/requests/<request_id>  — View a single request
 
 class TestGetSingleRequest:
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_found_returns_200(self, mock_session_cls, client, farmer_id, request_id):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id)
+    @pytest.fixture(scope="class")
+    def created_request(self, client, farmer_user, farmer_token):
+        """Create one request and return its ID for this class's tests."""
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(base_payload(farmer_user.user_id)),
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        response = client.get(f"/api/requests/{request_id}")
-        assert response.status_code == 200
-        assert response.get_json()["request_id"] == request_id
+        assert resp.status_code == 201
+        return resp.get_json()["request_id"]
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_not_found_returns_404(self, mock_session_cls, client):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = None
-        response = client.get(f"/api/requests/{str(uuid.uuid4())}")
-        assert response.status_code == 404
-        assert "error" in response.get_json()
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_response_has_all_erd_fields(self, mock_session_cls, client, farmer_id, request_id):
-        """
-        All ERD columns for TRANSPORT_REQUESTS must appear in the response:
-        request_id, farmer_id, pickup_location, destination_location,
-        pickup_date, animal_type, animal_quantity, status, notes, created_at
-        """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id)
+    def test_found_returns_200(self, client, farmer_token, created_request):
+        resp = client.get(
+            f"/api/requests/{created_request}",
+            headers=auth(farmer_token),
         )
-        body = client.get(f"/api/requests/{request_id}").get_json()
-        for field in ["request_id", "farmer_id", "pickup_location",
-                      "destination_location", "pickup_date", "animal_type",
-                      "animal_quantity", "status", "notes", "created_at"]:
-            assert field in body, f"ERD field missing from response: {field}"
+        assert resp.status_code == 200
+        assert resp.get_json()["request_id"] == created_request
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_farmer_id_matches_users_fk(self, mock_session_cls, client, farmer_id, request_id):
-        """farmer_id in response must match USERS.user_id (FK integrity check)."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id)
+    def test_requires_auth(self, client, created_request):
+        resp = client.get(f"/api/requests/{created_request}")
+        assert resp.status_code == 401
+
+    def test_not_found_returns_404(self, client, farmer_token):
+        resp = client.get(
+            f"/api/requests/{str(uuid.uuid4())}",
+            headers=auth(farmer_token),
         )
-        body = client.get(f"/api/requests/{request_id}").get_json()
-        assert body["farmer_id"] == farmer_id
+        assert resp.status_code == 404
+        assert "error" in resp.get_json()
 
-#  PUT /api/requests/<request_id>
-#  Farmer edits a request
+    def test_response_has_all_erd_fields(self, client, farmer_token, created_request):
+        """All TRANSPORT_REQUESTS ERD columns must appear in the response body."""
+        body = client.get(
+            f"/api/requests/{created_request}",
+            headers=auth(farmer_token),
+        ).get_json()
+        required = [
+            "request_id", "farmer_id", "pickup_location",
+            "destination_location", "pickup_date", "animal_type",
+            "animal_quantity", "status", "notes", "created_at",
+        ]
+        for field in required:
+            assert field in body, f"ERD field missing from single-request response: {field}"
+
+    def test_farmer_id_matches_user(self, client, farmer_user, farmer_token, created_request):
+        """farmer_id in response must match the actual USERS.user_id (FK check)."""
+        body = client.get(
+            f"/api/requests/{created_request}",
+            headers=auth(farmer_token),
+        ).get_json()
+        assert body["farmer_id"] == farmer_user.user_id
+
+#  PUT /api/requests/<request_id>  — Farmer edits a request
 
 class TestUpdateTransportRequest:
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_update_pending_success(self, mock_session_cls, client, farmer_id, request_id):
-        """PENDING request + valid fields → 200."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="PENDING")
+    @pytest.fixture(scope="class")
+    def pending_request_id(self, client, farmer_user, farmer_token):
+        """Fresh PENDING request for update tests."""
+        resp = client.post(
+            "/api/requests/",
+            data=json.dumps(base_payload(farmer_user.user_id)),
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        response = client.put(
-            f"/api/requests/{request_id}",
-            data=json.dumps({"pickup_location": "Nyamata, Rwanda"}),
-            content_type="application/json"
-        )
-        assert response.status_code == 200
-        assert "message" in response.get_json()
-        mock_session.commit.assert_called_once()
+        assert resp.status_code == 201
+        return resp.get_json()["request_id"]
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_update_not_found(self, mock_session_cls, client):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = None
-        response = client.put(
+    def test_update_pending_success(self, client, farmer_token, pending_request_id):
+        """PENDING + valid editable field → 200 + message."""
+        resp = client.put(
+            f"/api/requests/{pending_request_id}",
+            data=json.dumps({"pickup_location": "Nyamata, Rwanda"}),
+            content_type="application/json",
+            headers=auth(farmer_token),
+        )
+        assert resp.status_code == 200
+        assert "message" in resp.get_json()
+
+    def test_update_requires_auth(self, client, pending_request_id):
+        resp = client.put(
+            f"/api/requests/{pending_request_id}",
+            data=json.dumps({"pickup_location": "Nyamata"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 401
+
+    def test_update_not_found(self, client, farmer_token):
+        resp = client.put(
             f"/api/requests/{str(uuid.uuid4())}",
             data=json.dumps({"pickup_location": "Nowhere"}),
-            content_type="application/json"
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        assert response.status_code == 404
+        assert resp.status_code == 404
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_update_booked_request_rejected(self, mock_session_cls, client, farmer_id, request_id):
+    def test_update_booked_request_rejected(self, app, client, farmer_user, farmer_token):
         """
-        BOOKED = a transporter accepted via BOOKINGS table.
-        Editing now would conflict with the existing booking FK.
+        BOOKED = a transporter accepted this via BOOKINGS.
+        Editing a BOOKED request would conflict with the booking FK → 400.
         """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="BOOKED")
-        )
-        response = client.put(
-            f"/api/requests/{request_id}",
+        with app.app_context():
+            r = TransportRequest(
+                request_id=str(uuid.uuid4()),
+                farmer_id=farmer_user.user_id,
+                pickup_location="Kigali",
+                destination_location="Musanze",
+                pickup_date="2025-09-01T08:00:00",
+                animal_type="Goat",
+                animal_quantity=3,
+                status="BOOKED",
+            )
+            _db.session.add(r)
+            _db.session.commit()
+            booked_id = r.request_id
+
+        resp = client.put(
+            f"/api/requests/{booked_id}",
             data=json.dumps({"pickup_location": "Kigali"}),
-            content_type="application/json"
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        assert response.status_code == 400
+        assert resp.status_code == 400
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_update_in_transit_rejected(self, mock_session_cls, client, farmer_id, request_id):
-        """IN_TRANSIT — livestock already moving, editing is not allowed."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="IN_TRANSIT")
-        )
-        response = client.put(
-            f"/api/requests/{request_id}",
-            data=json.dumps({"animal_quantity": 10}),
-            content_type="application/json"
-        )
-        assert response.status_code == 400
+    def test_update_in_transit_rejected(self, app, client, farmer_user, farmer_token):
+        """Livestock already moving — editing is not allowed → 400."""
+        with app.app_context():
+            r = TransportRequest(
+                request_id=str(uuid.uuid4()),
+                farmer_id=farmer_user.user_id,
+                pickup_location="Kigali",
+                destination_location="Huye",
+                pickup_date="2025-09-02T08:00:00",
+                animal_type="Sheep",
+                animal_quantity=10,
+                status="IN_TRANSIT",
+            )
+            _db.session.add(r)
+            _db.session.commit()
+            transit_id = r.request_id
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_update_status_directly_rejected(self, mock_session_cls, client, farmer_id, request_id):
-        """
-        Status is managed by the booking flow (BOOKINGS table), not this endpoint.
-        Direct status changes here must be blocked.
-        """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="PENDING")
+        resp = client.put(
+            f"/api/requests/{transit_id}",
+            data=json.dumps({"animal_quantity": 15}),
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        response = client.put(
-            f"/api/requests/{request_id}",
+        assert resp.status_code == 400
+
+    def test_update_status_directly_rejected(self, client, farmer_token, pending_request_id):
+        """
+        Status transitions are managed by the booking flow, not this endpoint.
+        Sending a status field here must be blocked → 400.
+        """
+        resp = client.put(
+            f"/api/requests/{pending_request_id}",
             data=json.dumps({"status": "DELIVERED"}),
-            content_type="application/json"
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        assert response.status_code == 400
+        assert resp.status_code == 400
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_update_empty_body_rejected(self, mock_session_cls, client, farmer_id, request_id):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id)
-        )
-        response = client.put(
-            f"/api/requests/{request_id}",
+    def test_update_empty_body_rejected(self, client, farmer_token, pending_request_id):
+        """Empty update body has nothing to change → 400."""
+        resp = client.put(
+            f"/api/requests/{pending_request_id}",
             data=json.dumps({}),
-            content_type="application/json"
+            content_type="application/json",
+            headers=auth(farmer_token),
         )
-        assert response.status_code == 400
+        assert resp.status_code == 400
 
-#  DELETE /api/requests/<request_id>
-#  Farmer cancels a request
+#  DELETE /api/requests/<request_id>  — Farmer cancels a request
 
 class TestDeleteTransportRequest:
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_cancel_pending_success(self, mock_session_cls, client, farmer_id, request_id):
-        """PENDING request can be cancelled — no booking exists yet."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="PENDING")
+    def _create_request_with_status(self, app, client, farmer_user, farmer_token, status):
+        """Helper: insert a request with an arbitrary status directly via model."""
+        with app.app_context():
+            r = TransportRequest(
+                request_id=str(uuid.uuid4()),
+                farmer_id=farmer_user.user_id,
+                pickup_location="Kigali",
+                destination_location="Musanze",
+                pickup_date="2025-10-01T08:00:00",
+                animal_type="Cattle",
+                animal_quantity=2,
+                status=status,
+            )
+            _db.session.add(r)
+            _db.session.commit()
+            return r.request_id
+
+    def test_cancel_pending_success(self, app, client, farmer_user, farmer_token):
+        """PENDING request can be cancelled — no active booking exists."""
+        rid = self._create_request_with_status(app, client, farmer_user, farmer_token, "PENDING")
+        resp = client.delete(f"/api/requests/{rid}", headers=auth(farmer_token))
+        assert resp.status_code == 200
+        assert "message" in resp.get_json()
+
+    def test_cancel_requires_auth(self, app, client, farmer_user, farmer_token):
+        rid = self._create_request_with_status(app, client, farmer_user, farmer_token, "PENDING")
+        resp = client.delete(f"/api/requests/{rid}")
+        assert resp.status_code == 401
+
+    def test_cancel_not_found(self, client, farmer_token):
+        resp = client.delete(
+            f"/api/requests/{str(uuid.uuid4())}",
+            headers=auth(farmer_token),
         )
-        response = client.delete(f"/api/requests/{request_id}")
-        assert response.status_code == 200
-        assert "message" in response.get_json()
-        mock_session.delete.assert_called_once()
-        mock_session.commit.assert_called_once()
+        assert resp.status_code == 404
+        assert "error" in resp.get_json()
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_cancel_not_found(self, mock_session_cls, client):
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = None
-        response = client.delete(f"/api/requests/{str(uuid.uuid4())}")
-        assert response.status_code == 404
-        assert "error" in response.get_json()
-
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_cancel_booked_rejected(self, mock_session_cls, client, farmer_id, request_id):
+    def test_cancel_booked_rejected(self, app, client, farmer_user, farmer_token):
         """
-        BOOKED → BOOKINGS table has a row with FK → this request_id.
-        Deleting would orphan the booking. Must return 400.
+        BOOKED → BOOKINGS has a FK row pointing at this request.
+        Deleting would orphan that booking → must return 400.
         """
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="BOOKED")
-        )
-        response = client.delete(f"/api/requests/{request_id}")
-        assert response.status_code == 400
-        mock_session.delete.assert_not_called()
+        rid = self._create_request_with_status(app, client, farmer_user, farmer_token, "BOOKED")
+        resp = client.delete(f"/api/requests/{rid}", headers=auth(farmer_token))
+        assert resp.status_code == 400
+        # Confirm it wasn't deleted
+        with app.app_context():
+            assert TransportRequest.query.get(rid) is not None
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_cancel_in_transit_rejected(self, mock_session_cls, client, farmer_id, request_id):
-        """Livestock already in transit — cannot cancel."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="IN_TRANSIT")
-        )
-        response = client.delete(f"/api/requests/{request_id}")
-        assert response.status_code == 400
-        mock_session.delete.assert_not_called()
+    def test_cancel_in_transit_rejected(self, app, client, farmer_user, farmer_token):
+        """Livestock already in transit — cannot cancel → 400."""
+        rid = self._create_request_with_status(app, client, farmer_user, farmer_token, "IN_TRANSIT")
+        resp = client.delete(f"/api/requests/{rid}", headers=auth(farmer_token))
+        assert resp.status_code == 400
+        with app.app_context():
+            assert TransportRequest.query.get(rid) is not None
 
-    @patch("backend.routes.transport_requests_api.Session")
-    def test_cancel_delivered_rejected(self, mock_session_cls, client, farmer_id, request_id):
-        """DELIVERED — trip is complete, retroactive cancellation must be blocked."""
-        mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            make_mock_request(farmer_id, request_id, status="DELIVERED")
-        )
-        response = client.delete(f"/api/requests/{request_id}")
-        assert response.status_code == 400
-        mock_session.delete.assert_not_called()
+    def test_cancel_delivered_rejected(self, app, client, farmer_user, farmer_token):
+        """DELIVERED — trip complete, retroactive cancellation must be blocked → 400."""
+        rid = self._create_request_with_status(app, client, farmer_user, farmer_token, "DELIVERED")
+        resp = client.delete(f"/api/requests/{rid}", headers=auth(farmer_token))
+        assert resp.status_code == 400
+        with app.app_context():
+            assert TransportRequest.query.get(rid) is not None

@@ -83,7 +83,7 @@ async function submitRequest() {
                     localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
                 }
                 // Addition of notification to notification tab after request submitted
-                addLocalNotification(`✅ Your transport request (${payload.animal_type} → ${payload.destination_location}) has been submitted and is awaiting a transporter.`);
+                addLocalNotification(`✅ Your transport request (${payload.animal_type} to ${payload.destination_location}) has been submitted and is awaiting a transporter.`);
             } else {
                 showToast(data.error || 'Submission failed. Try again.', 'error')
             }
@@ -218,7 +218,7 @@ async function syncRequestNotifications() {
         for (const r of requests) {
             if (!seen.includes(r.request_id)) {
                 seen.push(r.request_id);
-                addLocalNotification(`Your transport request (${r.animal_type} → ${r.destination_location}) was submitted and is awaiting a transporter.`);
+                addLocalNotification(`Your transport request (${r.animal_type} to ${r.destination_location}) was submitted and is awaiting a transporter.`);
                 changed = true;
             }
         }
@@ -235,7 +235,7 @@ function openTripModal(r) {
     const isComplete = r.status === 'DELIVERED' || r.status === 'COMPLETE';
     document.getElementById('modal-body').innerHTML = `
         <div class="receipt-row"><span class="receipt-label">Pickup</span><span class="receipt-value">${r.pickup_location}</span></div>
-        <div class="receipt-row"><span class="receipt-label">Destination</span><span class="receipt-value">${r.destination}</span></div>
+        <div class="receipt-row"><span class="receipt-label">Destination</span><span class="receipt-value">${r.destination_location}</span></div>
         <div class="receipt-row"><span class="receipt-label">Date</span><span class="receipt-value">${formatDate(r.pickup_date)}</span></div>
         <div class="receipt-row"><span class="receipt-label">Animal Type</span><span class="receipt-value">${r.animal_type}</span></div>
         <div class="receipt-row"><span class="receipt-label">Quantity</span><span class="receipt-value">${r.animal_quantity}</span></div>

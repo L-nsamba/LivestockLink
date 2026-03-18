@@ -303,7 +303,7 @@ td {
     font-size: 0.75rem;
     font-weight: 600;
 }
-.status-badge.pending    { background: #f5c518;   color: #e8a020; border: 1px solid #e8a020; }
+.status-badge.pending    { background: #f5c518;   color:black; border: 1px solid #e8a020; }
 .status-badge.complete   { background: whitesmoke;  color: #27ae60; border: 1px solid #27ae60; }
 .status-badge.cancelled  { background: red; color: red; border: 1px solid red; }
 .status-badge.booked     { background: #eef2f9; color: #4a6fa5; border: 1px solid #4a6fa5; }
@@ -604,6 +604,7 @@ input[type="checkbox"] {
         font-size: 0.88rem;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 0.5rem;
     }
     td::before {
@@ -613,11 +614,10 @@ input[type="checkbox"] {
         color: #6b8a88;
         text-transform: uppercase;
         letter-spacing: 0.4px;
-        min-width: 90px;
         flex-shrink: 0;
     }
     td.cb-col { display: none; }
-    td:last-child { margin-top: 0.4rem; }
+    td:last-child { justify-content: center; margin-top: 0.6rem; }
 
     .page-header h1 { font-size: 1.6rem; }
 

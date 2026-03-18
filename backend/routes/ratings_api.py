@@ -9,6 +9,7 @@
 from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.rating import Rating
+from models.booking import Bookings
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 ratings = Blueprint('ratings', __name__)
@@ -24,28 +25,42 @@ def create_rating():
         if not data:
             return jsonify({"error": "Invalid or missing JSON"}), 400
 
-        required_fields = ['transporter_id', 'score']
+        required_fields = ['booking_id', 'score']
         for field in required_fields:
-
             if field not in data:
                 return jsonify({"error": f"Missing field: {field}"}), 400
 
-        if not isinstance(data['score'], int) or not (1 <= data['score'] <=5):
+        if not isinstance(data['score'], int) or not (1 <= data['score'] <= 5):
             return jsonify({"error": "Score must be an integer between 1 and 5"}), 400
 
+        current_user = get_current_user_id()
+
+        booking = session.query(Bookings).join(
+            Bookings.transport_request
+        ).filter(
+            Bookings.booking_id == data['booking_id'],
+            Bookings.status == 'DELIVERED'
+        ).first()
+
+        if not booking:
+            return jsonify({"error": "No delivered booking found with that ID"}), 403
+
+        if booking.transport_request.farmer_id != current_user:
+            return jsonify({"error": "You can only rate your own deliveries"}), 403
+
         existing = session.query(Rating).filter_by(
-            farmer_id=get_current_user_id(),
-            transporter_id=data['transporter_id']
+            booking_id=data['booking_id']
         ).first()
 
         if existing:
-            return jsonify({"error": "You already rated this transporter"}), 400
+            return jsonify({"error": "You already rated this delivery"}), 400
 
         new_rating = Rating(
-            farmer_id = get_current_user_id(),
-            transporter_id = data['transporter_id'],
-            score = data['score'],
-            comment = data.get('comment', None)
+            booking_id=data['booking_id'],
+            rating_by=current_user,
+            rating_for=booking.transporter_id,
+            score=data['score'],
+            comment=data.get('comment', None)
         )
 
         session.add(new_rating)
@@ -55,26 +70,27 @@ def create_rating():
 
     except Exception as e:
         session.rollback()
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
     finally:
         session.close()
 
-#Get all ratings for a transporter
-@ratings.route('/api/ratings/transporter/<int:transporter_id>', methods=['GET'])
+#GET all ratings for a transporter
+@ratings.route('/api/ratings/transporter/<transporter_id>', methods=['GET'])
 def get_transporter_ratings(transporter_id):
     session = Session()
     try:
-        ratings_list = session.query(Rating).filter_by(transporter_id=transporter_id).all()
+        ratings_list = session.query(Rating).filter_by(rating_for=transporter_id).all()
 
         return jsonify([{
             "rating_id": r.rating_id,
-            "farmer_id": r.farmer_id,
+            "booking_id": r.booking_id,
+            "rating_by": r.rating_by,
             "score": r.score,
             "comment": r.comment
         } for r in ratings_list]), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
     finally:
         session.close()
 
@@ -84,25 +100,26 @@ def get_transporter_ratings(transporter_id):
 def get_farmer_ratings(farmer_id):
     session = Session()
     try:
-        if get_current_user_id() != int(farmer_id):
+        if get_current_user_id() != farmer_id:
             return jsonify({"error": "Unauthorized"}), 403
 
-        ratings_list = session.query(Rating).filter_by(farmer_id=farmer_id).all()
+        ratings_list = session.query(Rating).filter_by(rating_by=farmer_id).all()
 
         return jsonify([{
             "rating_id": r.rating_id,
-            "transporter_id": r.transporter_id,
+            "booking_id": r.booking_id,
+            "rating_for": r.rating_for,
             "score": r.score,
             "comment": r.comment
         } for r in ratings_list]), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
     finally:
         session.close()
 
 #GET single rating
-@ratings.route('/api/ratings/<int:rating_id>', methods=['GET'])
+@ratings.route('/api/ratings/<rating_id>', methods=['GET'])
 def get_single_rating(rating_id):
     session = Session()
     try:
@@ -113,19 +130,20 @@ def get_single_rating(rating_id):
 
         return jsonify({
             "rating_id": r.rating_id,
-            "farmer_id": r.farmer_id,
-            "transporter_id": r.transporter_id,
+            "booking_id": r.booking_id,
+            "rating_by": r.rating_by,
+            "rating_for": r.rating_for,
             "score": r.score,
             "comment": r.comment
         }), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
     finally:
         session.close()
 
 #PUT (Edit rating)
-@ratings.route('/api/ratings/<int:rating_id>', methods=['PUT'])
+@ratings.route('/api/ratings/<rating_id>', methods=['PUT'])
 @require_role('FARMER')
 def update_rating(rating_id):
     session = Session()
@@ -135,8 +153,8 @@ def update_rating(rating_id):
         if not r:
             return jsonify({"error": "Rating not found"}), 404
 
-        if r.farmer_id != get_current_user_id():
-            return jsonify({"error": "unauthorized"}), 403
+        if r.rating_by != get_current_user_id():
+            return jsonify({"error": "Unauthorized"}), 403
 
         data = request.get_json()
 
@@ -156,12 +174,12 @@ def update_rating(rating_id):
 
     except Exception as e:
         session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
     finally:
         session.close()
 
 #DELETE rating
-@ratings.route('/api/ratings/<int:rating_id>', methods=['DELETE'])
+@ratings.route('/api/ratings/<rating_id>', methods=['DELETE'])
 @require_role('FARMER')
 def delete_rating(rating_id):
     session = Session()
@@ -171,7 +189,7 @@ def delete_rating(rating_id):
         if not r:
             return jsonify({"error": "Rating not found"}), 404
 
-        if r.farmer_id != get_current_user_id():
+        if r.rating_by != get_current_user_id():
             return jsonify({"error": "Unauthorized"}), 403
 
         session.delete(r)
@@ -179,9 +197,8 @@ def delete_rating(rating_id):
 
         return jsonify({"message": "Rating deleted"}), 200
 
-    except Exception as e:
+    except Exception:
         session.rollback()
         return jsonify({"error": "Internal server error"}), 500
     finally:
         session.close()
-

@@ -3,6 +3,7 @@ from database.db import Base
 from datetime import datetime, timezone
 from sqlalchemy import Column, Enum, DateTime, ForeignKey
 from sqlalchemy.dialects.mysql import CHAR
+from sqlalchemy.orm import relationship
 
 
 class Bookings(Base):
@@ -17,3 +18,6 @@ class Bookings(Base):
         nullable=False,
         default='ACCEPTED'
     )
+
+    transport_request = relationship("TransportRequest", foreign_keys=[request_id])
+    ratings = relationship("Rating", back_populates="booking")

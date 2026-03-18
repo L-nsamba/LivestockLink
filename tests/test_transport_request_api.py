@@ -1,5 +1,6 @@
 # Use pytest to test import pytest
 import uuid
+import pytest
 import json
 from unittest.mock import patch, MagicMock
 from backend.app import create_app
@@ -499,4 +500,4 @@ class TestDeleteTransportRequest:
         )
         response = client.delete(f"/api/requests/{request_id}")
         assert response.status_code == 400
-        mock_session.delete.assert_not_called()the API endpoint logic in the corresponding routes folder
+        mock_session.delete.assert_not_called()

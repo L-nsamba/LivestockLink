@@ -14,7 +14,7 @@ def create_app():
 
     app.register_blueprint(auth, url_prefix="/api")
     app.register_blueprint(admin, url_prefix="/api")
-    app.register_blueprint(transport_requests, url_prefix="/api")
+    app.register_blueprint(transport_requests)
     app.register_blueprint(bookings, url_prefix="/api")
 
     return app

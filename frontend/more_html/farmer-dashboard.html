@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LivestockLink - Farmer Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="../more_css/farmer-dashboard.css" rel="stylesheet">
 </head>
 <body>
@@ -18,7 +19,7 @@
             <span></span>
         </button>
         <button class="notif-btn" onclick="switchSection('notifications')">
-            🔔
+            <i class="fa-regular fa-bell"></i>
             <span class="notif-badge" id="notif-count">
             <span class="nav-badge" id="sidebar-notif-count"></span>
                 <!--populated by js logic-->
@@ -31,20 +32,28 @@
             <div class="sidebar-logo">Livestock Link</div>
 
             <button class="nav-item active" onclick="switchSection('find')" id="nav-find">
-                <span class="nav-icon">🔍</span> Find Transporter
+                <span class="nav-icon">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span> Find Transporter
             </button>
 
             <button class="nav-item" onclick="switchSection('history')" id="nav-history">
-                <span class="nav-icon">📋</span> History
+                <span class="nav-icon">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </span> History
             </button>
 
             <button class="nav-item" onclick="switchSection('notifications')" id="nav-notifications">
-                <span class="nav-icon">🔔</span> Notifications
+                <span class="nav-icon">
+                    <i class="fa-regular fa-bell"></i>
+                </span> Notifications
             </button>
 
             <div class="sidebar-bottom">
                 <button class="logout-btn" onclick="handleLogout()">
-                    <span class="nav-icon">⚙️</span> Log Out
+                    <span class="nav-icon">
+                        <i class="fa-solid fa-gear"></i>
+                    </span> Log Out
                 </button>
             </div> 
         </aside>
@@ -144,7 +153,9 @@
                 </div>
 
                 <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1.2rem;">
-                    <span style="font-size:1.2rem;">✉️</span>
+                    <span style="font-size:1.2rem;">
+                        <i class="fa-solid fa-envelope"></i>
+                    </span>
                     <span style="font-family:'Fraunces',serif; font-size:1.5rem; font-weight:900; color: #1e3a3a;">Notifications</span>
                 </div>
 

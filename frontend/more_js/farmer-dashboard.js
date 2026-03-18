@@ -101,7 +101,9 @@ async function loadHistory()  {
     tbody.innerHTML = `<tr>
                             <td colspan="6">
                                 <div class="empty-state">
-                                    <div class="emoji">⏳</div>
+                                    <div class="emoji">
+                                        <i class="fa-solid fa-hourglass"></i>
+                                    </div>
                                     <div>Loading....</div>
                                 </div>
                             </td>
@@ -145,7 +147,9 @@ async function loadHistory()  {
         `<tr>
             <td colspan="6">
                 <div class="empty-state">
-                    <div class="emoji">⚠️</div>
+                    <div class="emoji">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
                     <div>Could not load trips. Is Flask running?</div>
                 </div>
             </td>
@@ -185,7 +189,12 @@ function loadNotifications() {
     const notifs = getNotifs();
     const list = document.getElementById('notif-list');
     if (!notifs.length) {
-        list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><div>No notifications yet.</div></div>`;
+        list.innerHTML = `
+        <div class="empty-state">
+            <div class="emoji">
+                <i class="fa-solid fa-envelope"></i>
+            </div>
+        <div>No notifications yet.</div></div>`;
         return;
     }
     list.innerHTML = notifs.map(n => `

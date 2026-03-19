@@ -67,7 +67,7 @@ def test_registration_transporter_success(client):
         "full_name": "Michael Transporter",
         "contact": "0795222222",
         "email": "michaeltransporter@livestocklink.com",
-        "password": "efgh5678",
+        "password": "somepassword",
         "role": "TRANSPORTER",
         "vehicle_type": "Truck",
         "vehicle_capacity": 15,

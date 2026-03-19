@@ -119,7 +119,9 @@ async function loadHistory()  {
             `<tr>
                 <td colspan="6">
                     <div class="empty-state">
-                        <div class="emoji">🚛</div>
+                        <div class="emoji">
+                            <i class="fa-solid fa-truck"></i>
+                        </div>
                         <div>No trips yet. Create your first transport request!</div>
                     </div>
                 </td>
@@ -131,7 +133,7 @@ async function loadHistory()  {
         tbody.innerHTML = requests.map(r => `
             <tr>
                 <td class="cb-col"><input type="checkbox" class="row-cb"/></td>
-                <td data-label="Transporter">${r.transporter_id || '<span style="color: #6b8a88">Unassigned</span'}</td>
+                <td data-label="Transporter ID">${r.transporter_id || '<span style="color: #6b8a88">Unassigned</span'}</td>
                 <td data-label="Pickup">${r.pickup_location}</td>
                 <td data-label="Dropoff">${r.destination_location}</td>
                 <td data-label="Date">${formatDate(r.pickup_date)}</td>
@@ -249,7 +251,7 @@ function openTripModal(r) {
         <div class="receipt-row"><span class="receipt-label">Date</span><span class="receipt-value">${formatDate(r.pickup_date)}</span></div>
         <div class="receipt-row"><span class="receipt-label">Animal Type</span><span class="receipt-value">${r.animal_type}</span></div>
         <div class="receipt-row"><span class="receipt-label">Quantity</span><span class="receipt-value">${r.animal_quantity}</span></div>
-        <div class="receipt-row"><span class="receipt-label">Transporter</span><span class="receipt-value">${r.transporter_id || 'Awaiting match'}</span></div>
+        <div class="receipt-row"><span class="receipt-label">Transporter ID</span><span class="receipt-value">${r.transporter_id || 'Awaiting match'}</span></div>
         <div class="receipt-row"><span class="receipt-label">Status</span><span class="receipt-value"><span class="status-badge ${r.status.toLowerCase()}">${formatStatus(r.status)}</span></span></div>
         ${r.notes ? `<div class="receipt-row"><span class="receipt-label">Notes</span><span class="receipt-value">${r.notes}</span></div>` : ''}
         ${isComplete ? `
@@ -263,7 +265,7 @@ function openTripModal(r) {
         ` : ''}
         ${isPending ? `
           <div class="cancel-section">
-            <button class="btn-cancel-request" onclick="deleteRequest('${r.request_id}')">Cancel Request</button>
+            <button class="btn-cancel-request" onclick="deleteRequest('${r.request_id}', '${r.animal_type}', '${r.destination_location}')">Cancel Request</button>
           </div>
         ` : ''}
       `;
@@ -304,7 +306,7 @@ function closeModal() {
     selectedRating = 0;
 }
 
-async function deleteRequest(requestId) {
+async function deleteRequest(requestId, animalType, destination) {
     if (!confirm('Are you sure you want to cancel this request?')) return;
     try {
         const res = await fetch(`${BASE_URL}/api/requests/${requestId}`, {
@@ -314,6 +316,7 @@ async function deleteRequest(requestId) {
         const data = await res.json();
         if (res.ok) {
             showToast('Request cancelled.', 'success');
+            addLocalNotification(`<i class="fa-solid fa-circle-xmark"></i> Your transport request (${animalType} to ${destination}) has been cancelled.`);
             closeModal();
             loadHistory();
         } else {

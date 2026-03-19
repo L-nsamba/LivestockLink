@@ -163,6 +163,7 @@ async function loadHistory()  {
 // Notifications are stored in localStorage so they persist across page loads/logins
 const NOTIF_KEY = `notifs_${USER.user_id}`;
 const SEEN_KEY = `seen_requests_${USER.user_id}`;
+const SEEN_STATUS_KEY = `seen_statuses_${USER.user_id}`;
 
 function getNotifs() {
     return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
@@ -217,6 +218,7 @@ function markRead(id, el) {
 
 // On page load, fetch the farmer's requests from the server and generate notifications
 // for any requests we haven't notified about yet (catches requests made via APIdog etc.)
+// Also detects status changes made by the transporter and notifies the farmer.
 async function syncRequestNotifications() {
     try {
         const res = await fetch(`${BASE_URL}/api/requests/farmer/${USER.user_id}`, { headers: authHeaders() });
@@ -224,17 +226,41 @@ async function syncRequestNotifications() {
         const requests = await res.json();
 
         const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
-        let changed = false;
+        const seenStatuses = JSON.parse(localStorage.getItem(SEEN_STATUS_KEY) || '{}');
+        let seenChanged = false;
+        let statusChanged = false;
 
         for (const r of requests) {
+            // Notify for newly seen requests (submitted externally)
             if (!seen.includes(r.request_id)) {
                 seen.push(r.request_id);
+                seenStatuses[r.request_id] = r.status;
                 addLocalNotification(`Your transport request (${r.animal_type} to ${r.destination_location}) was submitted and is awaiting a transporter.`);
-                changed = true;
+                seenChanged = true;
+                statusChanged = true;
+                continue;
+            }
+
+            // Notify when transporter changes the status
+            const prevStatus = seenStatuses[r.request_id];
+            if (prevStatus !== r.status) {
+                seenStatuses[r.request_id] = r.status;
+                statusChanged = true;
+
+                if (r.status === 'BOOKED') {
+                    addLocalNotification(`<i class="fa-solid fa-circle-check"></i> A transporter has accepted your request (${r.animal_type} to ${r.destination_location}). Your livestock is being prepared for pickup!`);
+                } else if (r.status === 'IN_TRANSIT') {
+                    addLocalNotification(`<i class="fa-solid fa-truck-moving"></i> Your livestock (${r.animal_type} to ${r.destination_location}) is now in transit!`);
+                } else if (r.status === 'DELIVERED') {
+                    addLocalNotification(`<i class="fa-solid fa-flag-checkered"></i> Your transport request (${r.animal_type} to ${r.destination_location}) has been completed. Please rate your transporter.`);
+                } else if (r.status === 'PENDING' && prevStatus === 'BOOKED') {
+                    addLocalNotification(`<i class="fa-solid fa-circle-exclamation"></i> Your transporter has cancelled the booking for (${r.animal_type} to ${r.destination_location}). Your request is now available for other transporters.`);
+                }
             }
         }
 
-        if (changed) localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+        if (seenChanged) localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+        if (statusChanged) localStorage.setItem(SEEN_STATUS_KEY, JSON.stringify(seenStatuses));
     } catch (_) {
         // silently fail — notifications will still show stored ones
     }

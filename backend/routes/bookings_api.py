@@ -148,19 +148,17 @@ def update_booking_status(booking_id):
 
         booking.status = data['status']
 
-        # If booking is delivered or cancelled, update the transport request status
-        if data['status'] == 'DELIVERED':
-            transport_request = session.query(TransportRequest).filter_by(
-                request_id=booking.request_id
-            ).first()
-            if transport_request:
-                transport_request.status = 'DELIVERED'
+        # Sync transport request status so the farmer's dashboard reflects the latest state
+        transport_request = session.query(TransportRequest).filter_by(
+            request_id=booking.request_id
+        ).first()
 
-        elif data['status'] == 'CANCELLED':
-            transport_request = session.query(TransportRequest).filter_by(
-                request_id=booking.request_id
-            ).first()
-            if transport_request:
+        if transport_request:
+            if data['status'] == 'IN_TRANSIT':
+                transport_request.status = 'IN_TRANSIT'
+            elif data['status'] == 'DELIVERED':
+                transport_request.status = 'DELIVERED'
+            elif data['status'] == 'CANCELLED':
                 transport_request.status = 'PENDING'  # Make it available again
 
         session.commit()

@@ -240,8 +240,8 @@ input::placeholder {
 }
 
 .toast.show {opacity: 1; transform: translateX(-50%) translateY(0);}
-.toast.success { background-color: green;}
-.toast.error {background: red;}
+.toast.success { background-color: #6b8a88;}
+.toast.error {background: #FF5C5C;}
 
 .right-panel {
     flex: 1;

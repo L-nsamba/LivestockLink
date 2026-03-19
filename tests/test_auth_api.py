@@ -6,7 +6,7 @@ from backend.app import app
 
 @pytest.fixture
 # We create a test client to send fake requests to the server
-def cleint():
+def client():
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
@@ -56,10 +56,10 @@ def test_register_farmer_success(client):
 
     # If the user already exists, then response code 409 is also accepted during repeated tests
     if response.status_code == 201:
-        assert data["message"] == "User created successfully"
+        assert data["message"] == "User created"
         assert "user_id" in data
     else:
-        assert data["error"] == "This Email already exists and is in use"
+        assert data["error"] == "Email already in use"
 
 # Test 4: A successful transporter registration
 def test_registration_transporter_success(client):
@@ -79,10 +79,10 @@ def test_registration_transporter_success(client):
     data = response.get_json()
 
     if response.status_code == 201:
-        assert data["message"] == "User created successfully"
+        assert data["message"] == "User created"
         assert "user_id" in data
     else:
-        assert data["error"] == "This Email already exists and is in use"
+        assert data["error"] == "Email already in use"
 
 # Login Tests
 
@@ -147,7 +147,7 @@ def test_login_admin_success(client):
     assert response.status_code == 200
     data = response.get_json()
 
-    assert data["message"] == "Admin Login successful"
+    assert data["message"] == "Login successful"
     assert "token" in data
     assert "user" in data
     assert data["user"]["email"] == "leon@livestocklink.com"
@@ -161,4 +161,4 @@ def test_logout_success(client):
 
     assert response.status_code == 200
     data = response.get_json()
-    assert data["message"] == "User Logout successful"
+    assert data["message"] == "User logged out successfully"

@@ -154,7 +154,7 @@ def update_booking_status(booking_id):
                 request_id=booking.request_id
             ).first()
             if transport_request:
-                transport_request.status = 'COMPLETED'
+                transport_request.status = 'DELIVERED'
 
         elif data['status'] == 'CANCELLED':
             transport_request = session.query(TransportRequest).filter_by(

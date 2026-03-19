@@ -28,7 +28,7 @@ function switchSection(name) {
 // Toast notification message
 function showToast(msg, type = '') {
     const t = document.getElementById('toast');
-    t.textContent = msg;
+    t.innerHTML = msg;
     t.className = `toast ${type} show`
     setTimeout(() => {t.className = 'toast'; }, 3500);
 }
@@ -70,7 +70,7 @@ async function submitRequest() {
             const data = await res.json();
 
             if (res.ok) {
-                showToast('Transport request submitted! ✅', 'success');
+                showToast('<i class="fa-solid fa-circle-check"></i> Transport request submitted!', 'success');
                 // Clearing form after successful request submission
                 ['pickup_location', 'pickup_date', 'destination', 'animal_quantity', 'notes'].forEach(id => {
                     document.getElementById(id).value = '';

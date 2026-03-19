@@ -471,6 +471,26 @@ input[type="checkbox"] {
 
 .btn-rate:hover { background: #162828; }
 
+.cancel-section {
+    margin-top: 1.2rem;
+    text-align: center;
+}
+
+.btn-cancel-request {
+    padding: 0.7rem 1.8rem;
+    background: #7a1f1f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Fraunces', 'serif';
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.25s;
+}
+
+.btn-cancel-request:hover { background: #5c1515; }
+
 .toast {
     position: fixed;
     bottom: 2rem; left: 50%;

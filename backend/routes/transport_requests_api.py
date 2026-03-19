@@ -8,6 +8,7 @@
 from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.transport_request import TransportRequest
+from models.booking import Bookings
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 transport_requests = Blueprint('transport_request', __name__)
@@ -80,7 +81,9 @@ def get_farmer_requests(farmer_id):
         if get_current_user_id() != farmer_id:
             return jsonify({"error": "Unauthorized"}), 403
 
-        farmer_requests = session.query(TransportRequest).filter_by(farmer_id=farmer_id).all()
+        results = session.query(TransportRequest, Bookings).outerjoin(
+            Bookings, Bookings.request_id == TransportRequest.request_id
+        ).filter(TransportRequest.farmer_id == farmer_id).all()
 
         return jsonify([{
             "request_id" : r.request_id,
@@ -93,7 +96,9 @@ def get_farmer_requests(farmer_id):
             "status" : r.status,
             "notes" : r.notes,
             "created_at" : str(r.created_at),
-        } for r in farmer_requests]), 200
+            "booking_id" : b.booking_id if b else None,
+            "transporter_id" : b.transporter_id if b else None,
+        } for r, b in results]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

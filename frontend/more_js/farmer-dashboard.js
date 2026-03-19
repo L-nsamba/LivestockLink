@@ -242,27 +242,32 @@ async function syncRequestNotifications() {
 // This function displays the receipt and if trip complete allows the farmer to rate the transporter
 function openTripModal(r) {
     const isComplete = r.status === 'DELIVERED' || r.status === 'COMPLETE';
+    const isPending = r.status === 'PENDING';
     document.getElementById('modal-body').innerHTML = `
         <div class="receipt-row"><span class="receipt-label">Pickup</span><span class="receipt-value">${r.pickup_location}</span></div>
         <div class="receipt-row"><span class="receipt-label">Destination</span><span class="receipt-value">${r.destination_location}</span></div>
         <div class="receipt-row"><span class="receipt-label">Date</span><span class="receipt-value">${formatDate(r.pickup_date)}</span></div>
         <div class="receipt-row"><span class="receipt-label">Animal Type</span><span class="receipt-value">${r.animal_type}</span></div>
         <div class="receipt-row"><span class="receipt-label">Quantity</span><span class="receipt-value">${r.animal_quantity}</span></div>
-        <div class="receipt-row"><span class="receipt-label">Transporter</span><span class="receipt-value">${r.transporter_name || 'Awaiting match'}</span></div>
+        <div class="receipt-row"><span class="receipt-label">Transporter</span><span class="receipt-value">${r.transporter_id || 'Awaiting match'}</span></div>
         <div class="receipt-row"><span class="receipt-label">Status</span><span class="receipt-value"><span class="status-badge ${r.status.toLowerCase()}">${formatStatus(r.status)}</span></span></div>
         ${r.notes ? `<div class="receipt-row"><span class="receipt-label">Notes</span><span class="receipt-value">${r.notes}</span></div>` : ''}
         ${isComplete ? `
           <div class="rating-section">
             <div class="rating-label">Rate your transporter</div>
             <div class="stars" id="stars">
-              ${[1,2,3,4,5].map(i => `<span class="star" data-val="${i}" onclick="setRating(${i}, ${r.request_id})">★</span>`).join('')}
+              ${[1,2,3,4,5].map(i => `<span class="star" data-val="${i}" onclick="setRating(${i})">★</span>`).join('')}
             </div>
-            <button class="btn-rate" onclick="submitRating(${r.request_id})">Submit Rating</button>
+            <button class="btn-rate" onclick="submitRating('${r.booking_id}')">Submit Rating</button>
+          </div>
+        ` : ''}
+        ${isPending ? `
+          <div class="cancel-section">
+            <button class="btn-cancel-request" onclick="deleteRequest('${r.request_id}')">Cancel Request</button>
           </div>
         ` : ''}
       `;
       document.getElementById('trip-modal').classList.add('open');
-
 }
 
 let selectedRating = 0;
@@ -273,17 +278,50 @@ function setRating(val) {
     });
 }
 
-// Ratings and submission logic when rating file is done (submitRating() + closeModal())
-async function submitRating(requestId) {
+// Ratings and submission logic
+async function submitRating(bookingId) {
     if (!selectedRating) { showToast('Please select a star rating.', 'error'); return; }
-    showToast(`Rating of ${selectedRating}★ submitted. Thank you!`, 'success');
-    closeModal();
-    // TODO: wire to POST /api/ratings/ when bookings are in place
+    try {
+        const res = await fetch(`${BASE_URL}/api/ratings`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ booking_id: bookingId, score: selectedRating }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`Rating of ${selectedRating}★ submitted. Thank you!`, 'success');
+            closeModal();
+        } else {
+            showToast(data.error || 'Could not submit rating.', 'error');
+        }
+    } catch (err) {
+        showToast('Cannot reach server. Is Flask running?', 'error');
+    }
 }
 
 function closeModal() {
     document.getElementById('trip-modal').classList.remove('open');
     selectedRating = 0;
+}
+
+async function deleteRequest(requestId) {
+    if (!confirm('Are you sure you want to cancel this request?')) return;
+    try {
+        const res = await fetch(`${BASE_URL}/api/requests/${requestId}`, {
+            method: 'DELETE',
+            headers: authHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast('Request cancelled.', 'success');
+            closeModal();
+            loadHistory();
+        } else {
+            showToast(data.error || 'Could not cancel request.', 'error');
+        }
+    } catch (err) {
+        showToast('Cannot reach server. Is Flask running?', 'error');
+    }
 }
 
 // Close modal on overlay click

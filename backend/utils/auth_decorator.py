@@ -9,8 +9,9 @@ def require_role(*roles):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs): # args and kwargs parameters defined for compatibility // Allowing decorator to work on any Flask route
-            if current_app.config.get('TESTING'):
-                return f(*args, **kwargs)
+            #Commented out 2 lines to do auth-relates test
+            #if current_app.config.get('TESTING'):
+                #return f(*args, **kwargs)
             auth_header = request.headers.get("Authorization") # Retrieve header
             if not auth_header or not auth_header.startswith("Bearer "):
                 return jsonify({"error": "Missing or invalid token"}), 401

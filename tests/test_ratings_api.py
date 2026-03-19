@@ -33,10 +33,7 @@ def register_and_login(client, role):
         reg_data["farm_location"] = "Test Farm"
 
     register_resp = client.post('/api/auth/register', json=reg_data)
-    #TEMPORARY PRINT
-    print("REGISTER STATUS", register_resp.status_code)
-    print("REGISTER JSON:", register_resp.get_json())
-    #
+
     assert register_resp.status_code == 201
 
     login_resp = client.post('/api/auth/login', json={
@@ -44,11 +41,6 @@ def register_and_login(client, role):
         "password": password,
         "role": role
     })
-
-    #TEMPORARY PRINT
-    print("LOGIN STATUS", login_resp.status_code)
-    print("LOGIN JSON:", login_resp.get_json())
-    #
 
     assert login_resp.status_code == 200
     data = login_resp.get_json()

@@ -83,7 +83,7 @@ async function submitRequest() {
                     localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
                 }
                 // Addition of notification to notification tab after request submitted
-                addLocalNotification(`<i class="fa-solid fa-truck"></i> Your transport request (${payload.animal_type} to ${payload.destination_location}) has been submitted and is awaiting a transporter.`);
+                addLocalNotification(`<i class="fa-solid fa-bell"></i> Your transport request (${payload.animal_type} to ${payload.destination_location}) has been submitted and is awaiting a transporter.`);
             } else {
                 showToast(data.error || 'Submission failed. Try again.', 'error')
             }

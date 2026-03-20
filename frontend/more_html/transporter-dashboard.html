@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivestockLink - Transporter Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <nav class="topnav">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <button class="notif-btn" onclick="switchSection('notifications')" title="Notifications">
+            <i class="fa-regular fa-bell"></i>
+            <span class="notif-badge" id="notif-count">
+                <!--populated by js logic-->
+            </span>
+        </button>
+    </nav>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">Livestock Link</div>
+
+            <button class="nav-item active" onclick="switchSection('dashboard')" id="nav-dashboard">
+                <span class="nav-icon"><i class="fa-solid fa-house"></i></span> Dashboard
+            </button>
+
+            <button class="nav-item" onclick="switchSection('find')" id="nav-find">
+                <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span> Find Farmer
+            </button>
+
+            <button class="nav-item" onclick="switchSection('history')" id="nav-history">
+                <span class="nav-icon"><i class="fa-solid fa-clock-rotate-left"></i></span> History
+            </button>
+
+            <button class="nav-item" onclick="switchSection('notifications')" id="notifications">
+                <span class="nav-icon"><i class="fa fa-regular fa-bell"></i></span> Notifications
+            </button>
+
+            <div class="sidebar-bottom">
+                <button class="logout-btn">
+                    <span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Log Out
+                </button>
+            </div>
+        </aside>
+
+        <main class="main">
+            <!--Dashboard overview section-->
+            <section class="section active" id="section-dashboard">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <p>Welcome back!</p>
+                </div>
+
+                <div class="section-subheading">Latest Farmer Requests</div>
+                <div class="cards-grid" id="dashboard-cards">
+                    <!--populated by js logic-->
+                </div>
+                <button class="btn-view-all" onclick="switchSection('find')">
+                    View All Requests <i class="fa-solid fa-arrow-right"></i>
+                </button>
+
+                <div class="section-subheading">Recent Trips</div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Farmer</th>
+                                <th>Trip Details</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-trips-tbody">
+                        <!--populated by js logic-->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!--Find Farmer section-->
+            <section class="section" id="section-find">
+                <div class="page-header">
+                    <h1>Find Farmer</h1>
+                    <p>All open transport requests available for you to accept</p>
+                </div>
+                <div class="cards-grid" id="find-cards">
+                    <!--populated by js logic-->
+                </div>
+            </section>
+
+            <section class="section" id="section-history">
+                <!--Previous history section-->
+                <div class="page-header">
+                    <h1>Trip History</h1>
+                    <p>All trips you have accepted - update status as the job progresses</p>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Farmer</th>
+                                <th>Trip Details</th>
+                                <th>Date Accepted</th>
+                                <th>Status</th>
+                                <th>Update Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <!--populated by js logic-->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="section" id="section-notifications">
+                <!--Notifications section-->
+                <div class="page-header">
+                    <h1>Notifications</h1>
+                </div>
+                <div class="notif-list" id="notif-list">
+                    <!--populated by js logic-->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="request-modal">
+        <!--Trip receipt when more info is clicked-->
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Request Details</span>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modal-body">
+                <!--populated by js logic-->
+            </div>
+        </div>
+    </div>
+
+    <script src="../more_js/transporter-dashboard.js"></script>
+</body>
+</html>

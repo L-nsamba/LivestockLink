@@ -1,7 +1,7 @@
 const BASE_URL = 'http://127.0.0.1:5000';
 
 // Grabbing user information from localStorage, this information is set when a user logins in
-const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}')
 const USER = {
     user_id : storedUser.user_id || 0,
     name : storedUser.full_name || 'Not Available',
@@ -10,7 +10,7 @@ const USER = {
 
 // Helper to build auth headers for every API call
 function authHeaders() {
-    const token = localStorage.getItem('token') || '';
+    const token = sessionStorage.getItem('token') || '';
     return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 }
 
@@ -376,8 +376,8 @@ function formatStatus(s) {
 
 
 function handleLogout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     window.location.href = 'login.html';
 }
 

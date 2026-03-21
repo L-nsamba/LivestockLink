@@ -1,8 +1,8 @@
 const BASE_URL = 'http://127.0.0.1:5000'
 
 // Extracting tokens from local storage after login
-function getToken() {return localStorage.getItem('token')};
-function getTransporterId(){ return localStorage.getItem('user_id'); }
+function getToken() {return sessionStorage.getItem('token')};
+function getTransporterId(){ return sessionStorage.getItem('user_id'); }
 
 
 function authHeaders () {
@@ -15,7 +15,11 @@ function authHeaders () {
 // Simulation of accepting and declining requests locally
 let dismissedRequestIds = new Set();
 let currentModalRequest = null;
-let notifications = []; // Local notification storage
+let notifications = JSON.parse(localStorage.getItem('transporter_notifications') || '[]'); // Local notification storage
+
+function saveNotifications() {
+    localStorage.setItem('transporter_notifications', JSON.stringify(notifications) || '[]');
+}
 
 const requestCache = {}; // Stores full request objects, populated when loading the request endpoint calls
 
@@ -54,33 +58,33 @@ function buildCard(r) {
     return `
         <div class="request-card" id="card-${r.request_id}">
             <div class="card-field">
-                <span class="card-field-label">Farmer ID: </span>
-                <span class="card-field-label">${r.farmer_id}</span>
+                <span class="card-field-label">Farmer ID</span>
+                <span class="card-field-value">${r.farmer_id}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">Animal Type: </span>
-                <span class="card-field-label">${r.animal_type}</span>
-            </div>
-        
-            <div class="card-field">
-                <span class="card-field-label">Animal Quantity: </span>
-                <span class="card-field-label">${r.animal_quantity}</span>
+                <span class="card-field-label">Animal Type</span>
+                <span class="card-field-value">${r.animal_type}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">From: </span>
-                <span class="card-field-label">${r.pickup_location}</span>
+                <span class="card-field-label">Quantity</span>
+                <span class="card-field-value">${r.animal_quantity}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">To: </span>
-                <span class="card-field-label">${r.destination_location}</span>
+                <span class="card-field-label">From</span>
+                <span class="card-field-value">${r.pickup_location}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">Date: </span>
-                <span class="card-field-label">${dateStr}</span>
+                <span class="card-field-label">To</span>
+                <span class="card-field-value">${r.destination_location}</span>
+            </div>
+
+            <div class="card-field">
+                <span class="card-field-label">Date</span>
+                <span class="card-field-value">${dateStr}</span>
             </div>
 
             <div class="card-actions">
@@ -120,7 +124,7 @@ async function loadDashboard() {
         </div>`
     } catch (e) {
         container.innerHTML = 
-        `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Could not load requests. Check your connection (Is Flask running?)</div>`
+        `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Could not load requests</div>`
     }
 
     // Retrieving recent trips for individual transporter from bookings to display on that section of the dashboard
@@ -217,6 +221,7 @@ async function acceptRequest(requestId) {
         }
         closeModal();
         showToast('Request accepted! Trip added to your history.', 'success');
+        saveNotifications();
     } catch(e) {
         showToast('Network error. Please try again.', '');
     }
@@ -268,6 +273,12 @@ function openModal(requestId) {
             <span class="receipt-label">Status</span>
             <span class="receipt-value"><span class="status-badge pending">PENDING</span></span>
         </div>
+
+        ${r.notes ? `
+        <div class="receipt-row">
+            <span class="receipt-label">Notes</span>
+            <span class="receipt-value">${r.notes}</span>
+        </div>` : ''}
 
         <div class="modal-actions">
             <button class="btn-modal-accept" onclick="acceptRequest('${r.request_id}')">
@@ -336,7 +347,7 @@ async function loadHistory() {
 
             return `
                 <tr id="history-row-${b.booking_id}">
-                    <td data-label="Farmer">${b.farmer_id || '-'}</td>
+                    <td data-label="Farmer ID">${b.farmer_id || '-'}</td>
                     <td data-label="Trip Details" class="trip-route">${route}</td>
                     <td data-label="Date Accepted">${dateStr}</td>
                     <td data-label="Status"><span class="status-badge ${b.status.toLowerCase()}">${b.status.replace('_',' ')}</span></td>
@@ -377,12 +388,14 @@ async function updateStatus(bookingId, newStatus, requestId) {
         updateNotifCount();
         loadHistory();
         showToast(`Status updated to ${newStatus.replace('_',' ')}.`, 'success');
+        saveNotifications();
     } catch (e) {
         showToast('Network error. Please try again', '');
     }
 }
 
 // Notification loading and updating read status
+
 
 function loadNotifications() {
     const list = document.getElementById('notif-list');
@@ -404,12 +417,14 @@ function loadNotifications() {
         </div>`).join('');
 }
 
+
 // Updating the notif count icon
 function markRead(id) {
     const n = notifications.find(x => x.id === id);
     if (n) n.unread = false;
     loadNotifications();
     updateNotifCount();
+    saveNotifications();
 }
 
 function updateNotifCount() {
@@ -437,8 +452,31 @@ function showToast(msg, type) {
     toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3000);
 }
 
+// Logout Button
+function logout() {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user_id');
+    localStorage.removeItem('transporter_notifications');
+    window.location.href = '../more_html/login.html';
+}
+
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
+    const token = getToken();
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.role !== 'TRANSPORTER') {
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('user_id');
+                window.location.href = '../more_html/login.html';
+                return;
+            }
+        } catch {
+            window.location.href = '../more_html/login.html';
+            return;
+        }
+    }
     loadDashboard();
     updateNotifCount();
 });

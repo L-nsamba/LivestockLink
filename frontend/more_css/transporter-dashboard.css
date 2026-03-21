@@ -236,7 +236,8 @@ body {
     color: #6b8a88;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    min-width: 82px;
+    min-width: 105px;
+    flex-shrink: 0;
 }
 
 .card-field-value {

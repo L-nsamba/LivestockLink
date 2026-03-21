@@ -2,6 +2,8 @@ const BASE_URL = 'http://127.0.0.1:5000'
 
 // Extracting tokens from local storage after login
 function getToken() {return localStorage.getItem('token')};
+function getTransporterId(){ return localStorage.getItem('user_id'); }
+
 
 function authHeaders () {
     return {
@@ -52,38 +54,38 @@ function buildCard(r) {
     return `
         <div class="request-card" id="card-${r.request_id}">
             <div class="card-field">
-                <span class="card-field-label">Farmer ID</span>
+                <span class="card-field-label">Farmer ID: </span>
                 <span class="card-field-label">${r.farmer_id}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">Animal Type</span>
+                <span class="card-field-label">Animal Type: </span>
                 <span class="card-field-label">${r.animal_type}</span>
             </div>
         
             <div class="card-field">
-                <span class="card-field-label">Animal Quantity</span>
+                <span class="card-field-label">Animal Quantity: </span>
                 <span class="card-field-label">${r.animal_quantity}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">From</span>
+                <span class="card-field-label">From: </span>
                 <span class="card-field-label">${r.pickup_location}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">To</span>
+                <span class="card-field-label">To: </span>
                 <span class="card-field-label">${r.destination_location}</span>
             </div>
 
             <div class="card-field">
-                <span class="card-field-label">Date</span>
+                <span class="card-field-label">Date: </span>
                 <span class="card-field-label">${dateStr}</span>
             </div>
 
             <div class="card-actions">
                 <button class="btn-accept" onclick="acceptRequest('${r.request_id}')">Accept</button>
-                // <button class="btn-decline" onclick="declineRequest('${r.request_id}')">Decline</button>
+                <!--<button class="btn-decline" onclick="declineRequest('${r.request_id}')">Decline</button>-->
                 <button class="btn-more-info" onclick="openModal('${r.request_id}')">More Info</button>
 
             </div>
@@ -94,18 +96,20 @@ function buildCard(r) {
 // Dashboard section
 async function loadDashboard() {
     const container = document.getElementById('dashboard-cards');
-    const tbody = document.getElementById('dashboard-trips-tbdody');
+    const tbody = document.getElementById('dashboard-trips-tbody');
 
     // Retrieving top 3 latest requests for the cards latest farmer requests section
     try {
         const res = await fetch (`${BASE_URL}/api/requests`, { headers: authHeaders() });
         if (!res.ok) throw new Error('Failed to fetch requests');
 
+        const requests = await res.json();
+
         // Retrieving farm location data for the cached requests
         requests.forEach(r => { requestCache[r.request_id]= r});
 
         // Filtering such that records which have been booked don't show up on latest requests
-        const visible = requests.filter(r => !dismissedRequestIds.has(r.request_id)).slice(0, 3);
+        const visible = requests.filter(r => !dismissedRequestIds.has(r.request_id)).slice(0, 4);
 
         container.innerHTML = visible.length
         ? visible.map( r => buildCard(r)).join('')
@@ -116,7 +120,7 @@ async function loadDashboard() {
         </div>`
     } catch (e) {
         container.innerHTML = 
-        `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i>Could not load requests. Check your connection (Is Flask running ?)</div>`
+        `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Could not load requests. Check your connection (Is Flask running?)</div>`
     }
 
     // Retrieving recent trips for individual transporter from bookings to display on that section of the dashboard
@@ -144,11 +148,11 @@ async function loadDashboard() {
                 <td data-label="Trip Details" class="trip-route">${route}</td>
                 <td data-label="Date">${dateStr}</td>
                 <td data-label="Status"><span class="status-badge ${b.status.toLowerCase()}">${b.status.replace('_',' ')}</span></td>
-            </tr>;
+            </tr>
             `
         }).join('');
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4">Could not load trips.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4"><i class="fa-solid fa-circle-exclamation"></i> Could not load trips.</td></tr>`;
     }
 }
 
@@ -172,7 +176,7 @@ async function loadFindFarmer() {
                 <div>No pending requests available at the moment</div>
             </div>`
     } catch (e) {
-        container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i>Could not load requests. Check your connection (Is Flask running?)</div>`
+        container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Could not load requests. Check your connection (Is Flask running?)</div>`
     }
 }
 
@@ -204,7 +208,7 @@ async function acceptRequest(requestId) {
         updateNotifCount();
 
         // Card animation styling
-        const card = document.getElementById('card-', + requestId);
+        const card = document.getElementById('card-' + requestId);
         if (card) {
             card.style.transition = 'opacity 0.3s, transform 0.3s';
             card.style.opacity = '0';
@@ -266,10 +270,10 @@ function openModal(requestId) {
         </div>
 
         <div class="modal-actions">
-            <button class="btn-modal-accept" onclick="acceptRequest('${r.request_id}')"
-                <i class="fa-solid fa-check"></i>; Accept Request
+            <button class="btn-modal-accept" onclick="acceptRequest('${r.request_id}')">
+                <i class="fa-solid fa-check"></i> Accept Request
             </button>
-            <button class="btn-modal-close" onclick=""closeModal()">Close</button>      
+            <button class="btn-modal-close" onclick="closeModal()">Close</button>      
         </div>`;
 
     document.getElementById('request-modal').classList.add('open');
@@ -282,3 +286,159 @@ function closeModal() {
     document.getElementById('request-modal').classList.remove('open');
     currentModalRequest = null;
 }
+
+// History section
+
+const STATUS_OPTIONS = {
+    ACCEPTED: ['PICKED_UP', 'CANCELLED'],
+    PICKED_UP: ['IN_TRANSIT', 'CANCELLED'],
+    IN_TRANSIT: ['DELIVERED', 'CANCELLED'],
+    DELIVERED: [],
+    CANCELLED: []
+}
+
+async function loadHistory() {
+    const tbody = document.getElementById('history-tbody');
+
+    try {
+        const transporterId = getTransporterId();
+        const res = await fetch(`${BASE_URL}/api/bookings/transporter/${transporterId}`, {headers: authHeaders()});
+        if (!res.ok) throw new Error('Failed to fetch bookings');
+        const bookings = await res.json();
+
+        if (!bookings.length) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-envelope-open"></i>
+                        <div>No trips yet.</div>
+                    </div>
+                </td>
+            </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = bookings.map(b => {
+            const opts = STATUS_OPTIONS[b.status] || [];
+            const isDone = opts.length === 0;
+            const dateStr = b.accepted_at ? b.accepted_at.split('T')[0].split(' ')[0] : '-';
+            const route = b.pickup_location
+                ? `${b.pickup_location} to ${b.destination_location}`
+                : `Request ${b.request_id}`;
+
+            const selectHtml = isDone
+                ? `<span style="color:#6b8a88;font-size:0.82rem;">—</span>`
+                : `<select class="status-select" onchange="updateStatus('${b.booking_id}', this.value, '${b.request_id}')">
+                       <option value="" disabled selected>Move to…</option>
+                       ${opts.map(s => `<option value="${s}">${s.replace('_',' ')}</option>`).join('')}
+                   </select>`;
+
+            return `
+                <tr id="history-row-${b.booking_id}">
+                    <td data-label="Farmer">${b.farmer_id || '-'}</td>
+                    <td data-label="Trip Details" class="trip-route">${route}</td>
+                    <td data-label="Date Accepted">${dateStr}</td>
+                    <td data-label="Status"><span class="status-badge ${b.status.toLowerCase()}">${b.status.replace('_',' ')}</span></td>
+                    <td data-label="Update Status">${selectHtml}</td>
+                </tr>`
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `
+        <tr>
+            <td colspan="5"><i class="fa-solid fa-circle-exclamation"></i> Could not load history. Check your connection</td>
+        </tr>`
+    }
+}
+
+
+// This function enables a transport to update the request status according to delivery progression
+async function updateStatus(bookingId, newStatus, requestId) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/bookings/${bookingId}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({status: newStatus})
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.error || 'Failed to update status.', '');
+            return;
+        }
+
+        const req = requestCache[requestId] || {};
+        notifications.unshift({
+            id:      Date.now(),
+            message: `<i class="fa-solid fa-truck" style="color:#4a6fa5;margin-right:6px"></i>Status updated to <strong>${newStatus.replace('_',' ')}</strong> for trip: ${req.pickup_location || requestId} → ${req.destination_location || ''}.`,
+            time:    new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+            unread:  true
+        });
+        updateNotifCount();
+        loadHistory();
+        showToast(`Status updated to ${newStatus.replace('_',' ')}.`, 'success');
+    } catch (e) {
+        showToast('Network error. Please try again', '');
+    }
+}
+
+// Notification loading and updating read status
+
+function loadNotifications() {
+    const list = document.getElementById('notif-list');
+    if (!notifications.length) {
+        list.innerHTML = `
+        <div class="empty-state">
+            <i class="fa-solid fa-bell-slash"></i>
+            <div>No notifications yet.</div>
+        </div>
+        `;
+        return;
+    }
+    list.innerHTML = notifications.map(n => `
+        <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="markRead(${n.id})">
+            <span class="notif-text">${n.message}</span>
+            <div class="notif-meta">
+                <span class="notif-time">${n.time}</span>
+            </div>
+        </div>`).join('');
+}
+
+// Updating the notif count icon
+function markRead(id) {
+    const n = notifications.find(x => x.id === id);
+    if (n) n.unread = false;
+    loadNotifications();
+    updateNotifCount();
+}
+
+function updateNotifCount() {
+    const count      = notifications.filter(n => n.unread).length;
+    const badge      = document.getElementById('notif-count');
+    const sideBadge  = document.getElementById('sidebar-notif-count');
+    if (count > 0) {
+        badge.textContent     = count;
+        badge.style.display   = 'flex';
+        sideBadge.textContent = count;
+        sideBadge.style.display = 'inline';
+    } else {
+        badge.style.display     = 'none';
+        sideBadge.style.display = 'none';
+    }
+}
+
+// Toast notification message (success or failure notifications)
+let toastTimer;
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast show ' + (type || '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3000);
+}
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    updateNotifCount();
+});

@@ -49,8 +49,9 @@ async function handleLogin() {
 
         if (response.ok) {
             // Storage of the token and user info for later usage across the app
-            localStorage.setItem('token', result.token || '');
-            localStorage.setItem('user', JSON.stringify(result.user  || {}));
+            sessionStorage.setItem('token', result.token || '');
+            sessionStorage.setItem('user', JSON.stringify(result.user  || {}));
+            sessionStorage.setItem('user_id', result.user?.user_id || '');
 
             showToast('Welcome back!', 'success');
 

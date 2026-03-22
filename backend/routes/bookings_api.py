@@ -77,17 +77,25 @@ def get_transporter_bookings(transporter_id):
         if get_current_user_id() != transporter_id:
             return jsonify({"error": "Unauthorized"}), 403
 
-        transporter_bookings = session.query(Bookings).filter_by(
-            transporter_id=transporter_id
-        ).all()
+        # Joining the bookings and transport request table to be able to extract out more informative fields about the trip
+        results = session.query(Bookings, TransportRequest).join(
+            TransportRequest, Bookings.request_id == TransportRequest.request_id
+        ).filter(Bookings.transporter_id == transporter_id).all()
 
         return jsonify([{
-            "booking_id": b.booking_id,
-            "request_id": b.request_id,
-            "transporter_id": b.transporter_id,
-            "accepted_at": str(b.accepted_at),
-            "status": b.status
-        } for b in transporter_bookings]), 200
+            "booking_id":           b.booking_id,
+            "request_id":           b.request_id,
+            "transporter_id":       b.transporter_id,
+            "accepted_at":          str(b.accepted_at),
+            "status":               b.status,
+            "farmer_id":            r.farmer_id,
+            "pickup_location":      r.pickup_location,
+            "destination_location": r.destination_location,
+            "pickup_date":          str(r.pickup_date),
+            "animal_type":          r.animal_type,
+            "animal_quantity":      r.animal_quantity,
+            "notes":                r.notes
+        } for b, r in results]), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

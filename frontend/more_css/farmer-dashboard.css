@@ -51,9 +51,6 @@ body {
     display: flex; align-items: center; justify-content: center;
 }
 
-.user-info { text-align: right; }
-.user-name { font-weight: 600; font-size: 0.92rem; color: #1e3a3a; }
-.user-email { font-size: 0.78rem; color: #6b8a88; }
 
 .layout {
     display: flex;

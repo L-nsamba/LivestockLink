@@ -264,3 +264,173 @@
 .chart-container-sq { position: relative; height: 260px;}
 
 /*user section*/
+.section-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+    flex-wrap: wrap;
+}
+
+.search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.search-wrap i {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transition: translateY(-50%);
+    color: #6b8a88;
+    font-size: 0.85rem;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.65rem 1rem 0.65rem 2.4rem;
+    border: 1.5px solid #dce8e4;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: #1a2e2e;
+    background: white;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+    border-color: #5a9080;
+    box-shadow: 0 0 0 3px rgba(90, 144, 128, 0.12);
+}
+
+.filter-select {
+    padding: 0.65rem 1rem;
+    border: 1.5px solid #dce8e4;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: #1a2e2e;
+    background: white;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.filter-select:focus { border-color: #5a9080; }
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(autofill, minmax(270px, 1fr));
+    gap: 2.2rem;
+}
+
+/*user card design*/
+.user-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.4rem 1.5rem 1.2rem;
+    border: 1.5px solid #dce8e4;
+    box-shadow: 0 2px 14px rgba(30, 58, 58, 0.07);
+    transition: box-shadow 0.2s, transform 0.15s;
+    animation: fadeUp 0.3s ease both;
+}
+
+.user-card:hover {
+    box-shadow: 0 6px 24px rgba(30, 58, 58, 0.13);
+    transform: translateY(-2px);
+}
+
+.user-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f4f8;
+}
+
+.user-name {
+    font-weight: 700;
+    color: #1e3a3a;
+    font-size: 0.97rem;
+    line-height: 1.2;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 2px;
+}
+
+.role-farmer { background: #e8f5e9; color: #2e7d32; border: 1px solid #2e7d32; }
+.role-transporter { background: #eef2f9; color: #4a6fa5; border: 1px solid #4a6fa5; }
+.role-admin { background: #fff3e0; color: #e65100; border: 1px solid #e65100; }
+
+.card-field {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.42rem 0;
+    border-bottom: 1px solid #f0f4f8;
+}
+
+.card-field:last-of-type { border-bottom: none;}
+.card-field-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b8a88;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    min-width: 90px;
+}
+
+.card-field-value {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #1e3a3a;
+    word-break: break-word;
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+    flex-wrap: wrap;
+}
+
+.btn-update {
+    flex: 1;
+    padding: 0.55rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s;
+    border: 1.5px solid #4a6fa5;
+    background: white;
+    color: #4a6fa5;
+}
+
+.btn-update:hover { background: #eef2f9;}
+.btn-delete {
+    flex: 1;
+    padding: 0.55rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s;
+    border: none;
+    background: #FF5C5C;
+    color: white;
+}
+
+.btn-delete:hover { background: #e04444;}

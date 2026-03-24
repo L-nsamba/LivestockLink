@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - LivestockLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="../more_css/admin-dashboard.css" rel="stylesheet">
+</head>
+<body>
+
+    <!--Mobile sidebar-->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!--top nav section-->
+    <nav class="topnav">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <div class="topnav-right">
+            <div class="admin-label">Admin</div>
+        </div>
+    </nav>
+    
+    <div class="layout">
+        <!--Sidebar design-->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">Livestock Link</div>
+
+            <button class="nav-item active" id="nav-dashboard" onclick="switchSection('dashboard')">
+                <i class="fa-solid fa-house nav-icon"></i> Dashboard
+            </button>
+
+            <button class="nav-item" id="nav-users" onclick="switchSection('users')">
+                <i class="fa-solid fa-users nav-icon"></i> Users
+            </button>
+
+            <button class="nav-item" id="nav-notifications" onclick="switchSection('notifications')">
+                <i class="fa-regular fa-bell nav-icon"></i> Notifications
+                <span class="nav-badge" id="notif-badge">
+                    <!--populated by js logic-->
+                </span>
+            </button>
+
+            <div class="sidebar-bottom">
+                <button class="logout-btn" onclick="handleLogout()">
+                    <span class="nav-icon">
+                        <i class="fa-solid fa-gear"></i>
+                    </span> Log Out
+                </button>
+            </div> 
+
+        </aside>
+
+        <!--main design-->
+        <main class="main">
+            <!--dashboard overview-->
+
+            <section class="section-active" id="section-dashboard">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Key insights on platform activity</p>
+
+                <!--Stat cards-->
+                <div class="stat-grid">
+                    <!--total users card-->
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap"><i class="fa-solid fa-users"></i></div>
+                        <div class="stat-value">
+                            <!--populated by js logic-->
+                        </div>
+                        <div class="stat-label"> Total Users </div>
+                    </div>
+
+                    <!--total active requests card-->
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap"><i class="fa-solid fa-clock"></i></div>
+                        <div class="stat-value">
+                            <!--populated by js logic-->
+                        </div>
+                        <div class="stat-label"> Active Requests </div>
+                    </div>
+
+                    <!--total completed trips-->
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap"><i class="fa-solid fa-truck"></i></div>
+                        <div class="stat-value">
+                            <!--populated by js logic-->
+                        </div>
+                        <div class="stat-label"> Completed Trips </div>
+                    </div>
+
+                </div>
+
+                <!--Chart sections-->
+                <div class="charts-row">
+
+                    <!--Requests Vs Dates Chart-->
+                    <div class="chart-card">
+                        <div class="chart-title">Requests Over Dates</div>
+                        <div class="chart-container-sq">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!--Trip status breakdown chart-->
+                    <div class="chart-card">
+                        <div class="chart-title">Status Breakdown</div>
+                        <div class="chart-container-sq">
+                            <canvas id="donutChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!--Wide horizontal chart showing top pickup locations-->
+                    <div class="chart-card-wide">
+                        <div class="chart-title">Top Pickup Locations</div>
+                        <div class="chart-container" style="height: 260px;">
+                            <canvas id="hbarChart"></canvas>
+                        </div>
+                    </div>
+            </section>
+
+            <!--user section-->
+            <section class="section" id="section-users">
+                <h1 class="page-title">Users</h1>
+                <p class="page-subtitle">Manage registered farmers, transporters and admins</p>
+
+                <div class="section-controls">
+                    <!--ability to search for user by name or email-->
+                    <div class="search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input class="search-input" type="text" id="user-search" placeholder="Search by name or email"/>
+                    </div>
+
+                    <select class="filter-select" id="role-filter">
+                        <option value="all">All Roles</option>
+                        <option value="farmer">Farmer</option>
+                        <option value="transporter">Transporter</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
+                <!--display if the user name or email not existing-->
+                <div class="cards-grid" id="users-grid"></div>
+                <div class="empty-state" id="users-empty" style="display: none;">
+                    <i class="fa-solid fa-users-slash"></i>
+                    <p>No users found matching your search</p>
+                </div>
+            </section>
+
+            <!--Notifications section-->
+            <section class="section" id="section-notifications">
+                <h1 class="page-title">Notifications</h1>
+                <p class="page-subtitle">Completed trips and farmer ratings</p>
+
+                <div class="notif-tabs">
+                    <button class="notif-tab active" data-panel="trips">Completed Trips</button>
+                    <button class="notif-tab" data-panel="ratings">Ratings</button>
+                </div>
+
+                <!--trips panel-->
+                <div class="notif-panel" id="panel-trips">
+                    <div class="notif-list" id="trips-list"></div>
+                </div>
+
+                <!--ratings panel-->
+                <div class="notif-panel" id="panel-ratings">
+                    <div class="notif-list" id="ratings-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!--update user on receipt/modal-->
+    <div class="modal-overlay" id="update-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Update User</span>
+                <button class="modal-close" id="modal-close-btn">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input class="form-input" id="edit-name" type="text" placeholder="Full name"/>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" id="edit-email" type="text" placeholder="Email address"/>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Contact</label>
+                <input class="form-input" id="edit-phone" type="text" placeholder="Phone number"/>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Location</label>
+                <input class="form-input" id="edit-location" type="text" placeholder="Location"/>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-modal-save" id="modal-save-btn">Save Changes</button>
+                <button class="btn-modal-cancel" id="modal-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../more_js/admin-dashboard.js"></script>
+</body>
+</html>

@@ -1,378 +1,325 @@
-const token = sessionStorage.getItem('token');
-const BASE  = 'http://127.0.0.1:5000/api';
+const BASE_URL = 'http://127.0.0.1:5000';
 
-const authHeaders = {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${token}`
-};
-
-// ── Generic fetch ────────────────────────────────────────────────
-async function apiFetch(path) {
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders });
-  if (res.status === 401 || res.status === 403) {
-    alert('Session expired. Please log in again.');
-    window.location.href = '../more_html/login.html';
-    return;
-  }
-  if (!res.ok) throw new Error(`Request failed: ${path} (${res.status})`);
-  return res.json();
+// Extracting the token used for session management from headers
+function authHeaders() {
+    const token = sessionStorage.getItem('token') || '';
+    return {'Content-Type' : 'application/json', 'Authorization' : `Bearer ${token}`}
 }
 
-// ── Stat Cards ───────────────────────────────────────────────────
-// Targets: stat-total-users, stat-pending, stat-completed (your HTML IDs)
-async function loadStats() {
-  const d = await apiFetch('/admin/charts/stats');
-  document.getElementById('stat-total-users').textContent = d.total_users;
-  document.getElementById('stat-pending').textContent     = d.pending_requests;
-  document.getElementById('stat-completed').textContent   = d.completed_trips;
-}
-
-// ── Bar Chart: Requests over time ────────────────────────────────
-// Canvas ID in HTML: barChart
-async function loadRequestsChart() {
-  const d = await apiFetch('/admin/charts/requests-per-day');
-  new Chart(document.getElementById('barChart'), {
-    type: 'bar',
-    data: {
-      labels: d.labels,
-      datasets: [{
-        label: 'Requests',
-        data: d.data,
-        backgroundColor: 'rgba(74, 111, 165, 0.75)',
-        borderRadius: 6,
-        borderWidth: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: '#f0f4f8' } },
-        x: { grid: { display: false } }
-      }
-    }
-  });
-}
-
-// ── Donut Chart: Status breakdown ────────────────────────────────
-// Canvas ID in HTML: donutChart
-// Status values from Bookings model: ACCEPTED, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED
-async function loadStatusChart() {
-  const d = await apiFetch('/admin/charts/status-breakdown');
-  const colors = {
-    ACCEPTED:   '#8bbcaa',
-    PICKED_UP:  '#76e4f7',
-    IN_TRANSIT: '#f6ad55',
-    DELIVERED:  '#4a6fa5',
-    CANCELLED:  '#FF5C5C'
-  };
-  new Chart(document.getElementById('donutChart'), {
-    type: 'doughnut',
-    data: {
-      labels: d.labels,
-      datasets: [{
-        data: d.data,
-        backgroundColor: d.labels.map(l => colors[l] || '#dce8e4'),
-        borderWidth: 2,
-        borderColor: '#fff'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '68%',
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { padding: 16, font: { size: 11, family: 'DM Sans' } }
-        }
-      }
-    }
-  });
-}
-
-// ── Horizontal Bar: Top pickup locations ─────────────────────────
-// Canvas ID in HTML: hbarChart
-async function loadLocationsChart() {
-  const d = await apiFetch('/admin/charts/top-pickup-locations');
-  new Chart(document.getElementById('hbarChart'), {
-    type: 'bar',
-    data: {
-      labels: d.labels,
-      datasets: [{
-        label: 'Requests',
-        data: d.data,
-        backgroundColor: 'rgba(139, 188, 170, 0.8)',
-        borderRadius: 6,
-        borderWidth: 0
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { beginAtZero: true, grid: { color: '#f0f4f8' } },
-        y: { grid: { display: false } }
-      }
-    }
-  });
-}
-
-// ── Users Grid ───────────────────────────────────────────────────
-// Renders into cards-grid using user-card structure matching your CSS
-let allUsers = [];
-
-async function loadUsersGrid() {
-  allUsers = await apiFetch('/admin/users');
-  renderUsers(allUsers);
-}
-
-function renderUsers(users) {
-  const grid  = document.getElementById('users-grid');
-  const empty = document.getElementById('users-empty');
-
-  if (!users || !users.length) {
-    grid.innerHTML = '';
-    empty.style.display = 'flex';
-    return;
-  }
-
-  empty.style.display = 'none';
-
-  // role class must be lowercase to match your CSS: .role-farmer, .role-transporter, .role-admin
-  grid.innerHTML = users.map(u => `
-    <div class="user-card" id="card-${u.user_id}">
-      <div class="user-card-header">
-        <div>
-          <div class="user-name">${u.full_name}</div>
-          <span class="role-badge role-${u.role.toLowerCase()}">${u.role}</span>
-        </div>
-      </div>
-
-      <div class="card-field">
-        <span class="card-field-label">Email</span>
-        <span class="card-field-value">${u.email}</span>
-      </div>
-      <div class="card-field">
-        <span class="card-field-label">Contact</span>
-        <span class="card-field-value">${u.contact || '—'}</span>
-      </div>
-
-      <div class="card-actions">
-        <button class="btn-update" onclick="openEditModal('${u.user_id}', '${u.full_name}', '${u.email}', '${u.contact || ''}')">
-          Edit
-        </button>
-        <button class="btn-delete" onclick="deleteUser('${u.user_id}')">
-          Delete
-        </button>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ── Search + Role Filter ─────────────────────────────────────────
-document.getElementById('user-search').addEventListener('input', filterUsers);
-document.getElementById('role-filter').addEventListener('change', filterUsers);
-
-function filterUsers() {
-  const search = document.getElementById('user-search').value.toLowerCase();
-  const role   = document.getElementById('role-filter').value.toLowerCase();
-
-  const filtered = allUsers.filter(u => {
-    const matchSearch = u.full_name.toLowerCase().includes(search) ||
-                        u.email.toLowerCase().includes(search);
-    const matchRole   = role === 'all' || u.role.toLowerCase() === role;
-    return matchSearch && matchRole;
-  });
-
-  renderUsers(filtered);
-}
-
-// ── Delete User ──────────────────────────────────────────────────
-async function deleteUser(userId) {
-  if (!confirm('Are you sure you want to delete this user?')) return;
-  const res = await fetch(`${BASE}/admin/users/${userId}`, {
-    method: 'DELETE',
-    headers: authHeaders
-  });
-  if (res.ok) {
-    allUsers = allUsers.filter(u => u.user_id !== userId);
-    document.getElementById(`card-${userId}`)?.remove();
-    if (!allUsers.length) {
-      document.getElementById('users-empty').style.display = 'flex';
-    }
-  } else {
-    alert('Failed to delete user.');
-  }
-}
-
-// ── Edit Modal ───────────────────────────────────────────────────
-let editingUserId = null;
-
-function openEditModal(userId, name, email, contact) {
-  editingUserId = userId;
-  document.getElementById('edit-name').value  = name;
-  document.getElementById('edit-email').value = email;
-  document.getElementById('edit-phone').value = contact;
-  document.getElementById('edit-location').value = '';
-  document.getElementById('update-modal').classList.add('open');
-}
-
-function closeEditModal() {
-  editingUserId = null;
-  document.getElementById('update-modal').classList.remove('open');
-}
-
-document.getElementById('modal-close-btn').addEventListener('click', closeEditModal);
-document.getElementById('modal-cancel-btn').addEventListener('click', closeEditModal);
-
-document.getElementById('modal-save-btn').addEventListener('click', async () => {
-  if (!editingUserId) return;
-
-  const res = await fetch(`${BASE}/admin/users/${editingUserId}`, {
-    method: 'PUT',
-    headers: authHeaders,
-    body: JSON.stringify({
-      full_name: document.getElementById('edit-name').value,
-      email:     document.getElementById('edit-email').value,
-      contact:   document.getElementById('edit-phone').value
-    })
-  });
-
-  if (res.ok) {
-    closeEditModal();
-    await loadUsersGrid(); // refresh so card shows updated info
-  } else {
-    alert('Failed to update user.');
-  }
-});
-
-// ── Notifications: Tab switching ─────────────────────────────────
-// Your HTML uses .notif-panel with display:none / .active for show
-document.querySelectorAll('.notif-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.notif-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById(`panel-${tab.dataset.panel}`).classList.add('active');
-  });
-});
-
-async function loadNotifications() {
-  await Promise.all([loadCompletedTrips(), loadRatings()]);
-}
-
-// ── Notifications: Completed Trips ───────────────────────────────
-async function loadCompletedTrips() {
-  const list = document.getElementById('trips-list');
-  try {
-    const data = await apiFetch('/admin/completed-trips');
-
-    if (!data.length) {
-      list.innerHTML = '<p class="notif-sub" style="padding:1rem;">No completed trips yet.</p>';
-      return;
-    }
-
-    list.innerHTML = data.map(t => `
-      <div class="notif-item">
-        <div class="notif-body">
-          <div class="notif-text">
-            ${t.pickup_location} → ${t.destination_location}
-          </div>
-          <div class="notif-sub">
-            ${t.animal_quantity}x ${t.animal_type} &nbsp;·&nbsp; Pickup: ${t.pickup_date}
-          </div>
-        </div>
-        <div class="notif-meta">
-          <div class="notif-time">${new Date(t.accepted_at).toLocaleDateString()}</div>
-        </div>
-      </div>
-    `).join('');
-  } catch {
-    list.innerHTML = '<p class="notif-sub" style="padding:1rem;">Could not load trips.</p>';
-  }
-}
-
-// ── Notifications: Ratings ────────────────────────────────────────
-// Rating fields: rating_id, booking_id, rating_by, rating_for, score, comment, created_at
-async function loadRatings() {
-  const list = document.getElementById('ratings-list');
-  try {
-    const data = await apiFetch('/admin/ratings');
-
-    if (!data.length) {
-      list.innerHTML = '<p class="notif-sub" style="padding:1rem;">No ratings yet.</p>';
-      return;
-    }
-
-    list.innerHTML = data.map(r => `
-      <div class="notif-item">
-        <div class="notif-body">
-          <div class="star-row">
-            ${[1,2,3,4,5].map(i =>
-              `<span class="star ${i <= r.score ? '' : 'empty'}">★</span>`
-            ).join('')}
-          </div>
-          <div class="notif-text" style="margin-top:0.35rem;">
-            ${r.comment || '<em style="color:#6b8a88">No comment left</em>'}
-          </div>
-          <div class="notif-sub">Booking #${r.booking_id.slice(0, 8)}…</div>
-        </div>
-        <div class="notif-meta">
-          <div class="notif-time">${new Date(r.created_at).toLocaleDateString()}</div>
-        </div>
-      </div>
-    `).join('');
-  } catch {
-    list.innerHTML = '<p class="notif-sub" style="padding:1rem;">Could not load ratings.</p>';
-  }
-}
-
-// ── Section Switching ─────────────────────────────────────────────
+// Sidebar navigation 
+// Addition of functionality to switch between different sections on sidebar
 function switchSection(name) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById(`section-${name}`).classList.add('active');
-  document.getElementById(`nav-${name}`).classList.add('active');
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item[id^="nav-"]').forEach(n => n.classList.remove('active')); // id^ is essentially like regex i.e we are extracting all nav-items (class) with the id starting with nav-
+    document.getElementById('section-' + name).classList.add('active');
+    const navEl = document.getElementById('nav-' + name);
+    if (navEl) navEl.classList.add('active');
+    closeSidebar();
+
+    // Calling the functions which contain the respective contents of the different sections so that they execute when switched to the section
+    if (name === 'users') loadUsers();
+    if (name === 'notifications') { loadTripNotifs(); loadRatingNotifs(); }
 }
 
-// ── Sidebar (mobile) ──────────────────────────────────────────────
+// Essentially what causes the sidebar to opening and closing on the responsive design
 function toggleSidebar() {
-  const sidebar   = document.getElementById('sidebar');
-  const overlay   = document.getElementById('sidebar-overlay');
-  const hamburger = document.getElementById('hamburger');
-  sidebar.classList.toggle('open');
-  overlay.classList.toggle('open');
-  hamburger.classList.toggle('open');
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('hamburger').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
 }
+
 
 function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('open');
-  document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-// ── Logout ────────────────────────────────────────────────────────
 function handleLogout() {
-  sessionStorage.clear();
-  window.location.href = '../more_html/login.html';
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    window.location.href = '../more_html/login.html'
 }
 
-// ── Boot ──────────────────────────────────────────────────────────
-// Show first notif panel on load
-document.addEventListener('DOMContentLoaded', () => {
-  const firstPanel = document.getElementById('panel-trips');
-  if (firstPanel) firstPanel.classList.add('active');
+// Where users retrieved from the db are stored to provide real time info on the dashboards
+let allUsers = []
+
+async function loadUsers () {
+    const grid = document.getElementById('users-grid');
+    grid.innerHTML = `<p style="color:#6b8a88;padding:1rem;text-align:center;">Loading...</p>`
+    document.getElementById('users-empty').style.display = 'none';
+
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/users`, {headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load users');
+        allUsers = data;
+        renderUsers(allUsers)
+    } catch(err) {
+        grid.innerHTML = `<p style="color:#e74c3c;padding:1rem;text-align:center;">${err.message}</p>`
+    }
+}
+
+// This function is responsible for displaying all users
+function renderUsers(list) {
+    const grid = document.getElementById('users-grid');
+    const empty = document.getElementById('users-empty');
+    grid.innerHTML = '';
+    if (!list.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none'
+    // Creation of the user cards displayed on the all users section
+    list.forEach( u => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        card.dataset.id = u.user_id;
+        card.innerHTML = `
+            <div class="user-card-header">
+                <div>
+                    <div class="user-name">${u.full_name}</div>
+                    <span class="role-badge role-${u.role.toLowerCase()}">${u.role}</span>
+                </div>
+            </div>
+
+            <div class="card-field">
+                <span class="card-field-label">Email</span>
+                <span class="card-field-value" data-field="email">${u.email}</span>
+            </div>
+            <div class="card-field">
+                <span class="card-field-label">Contact</span>
+                <span class="card-field-value" data-field="contact">${u.contact || '-'}</span>
+            </div>
+            <div class="card-field">
+                <span class="card-field-label">Joined</span>
+                <span class="card-field-value">${u.created_at || '-'}</span>
+            </div>
+
+            <div class="card-actions">
+                <button class="btn-update" onclick="openUpdateModal('${u.user_id}')"><i class="fa-solid fa-pen-to-square"></i>Update</button>
+                <button class="btn-delete" onclick="deleteUser('${u.user_id}', this)"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>`;
+            grid.appendChild(card);
+    });
+}
+
+// search & filter
+function applyFilters () {
+    // Essentially matching names search to those existing within the results
+    const q = document.getElementById('user-search').value.toLowerCase();
+    const role = document.getElementById('role-filter').value;
+    const filtered = allUsers.filter(u => {
+        const matchQ = u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+        const matchRole = role === 'all' || u.role.toLowerCase() === role;
+        return matchQ && matchRole;
+    });
+    renderUsers(filtered)
+}
+
+// Applying event listeners on the search by user name / general role
+document.getElementById('user-search').addEventListener('input', applyFilters)
+document.getElementById('role-filter').addEventListener('change', applyFilters);
+
+// Deleting a user by admin
+async function deleteUser(id, btn) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/users/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            showToast(data.error || 'Could not delete user.', 'error')
+            return;
+        }
+        const card = btn.closest('.user-card');
+        card.style.transition = 'opacity 0.3s, transform 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => card.remove(), 300);
+        allUsers = allUsers.filter(u => String(u.user_id) !== String(id));
+        showToast('User deleted', 'error');
+    } catch (err) {
+        showToast('Cannot reach server. Is Flask running?', 'error');
+    }
+}
+
+// Updating modal/card containing user information
+let editingId = null;
+
+function openUpdateModal(id) {
+    const u = allUsers.find(u => String(u.user_id) === String(id)); // Searching through the array of existing users to find the one which matches user_id of searched user
+    if (!u) return;
+    editingId = id;
+    document.getElementById('edit-name').value = u.full_name;
+    document.getElementById('edit-email').value = u.email;
+    document.getElementById('edit-phone').value = u.contact || '';
+
+    // Hide all role-specific fields first, then show the relevant ones
+    document.getElementById('farmer-fields').style.display = 'none';
+    document.getElementById('transporter-fields').style.display = 'none';
+
+    if (u.role === 'FARMER') {
+        document.getElementById('farmer-fields').style.display = 'block';
+        document.getElementById('edit-farm-location').value = u.farm_location || '';
+    } else if (u.role === 'TRANSPORTER') {
+        document.getElementById('transporter-fields').style.display = 'block';
+        document.getElementById('edit-vehicle-type').value = u.vehicle_type || '';
+        document.getElementById('edit-vehicle-capacity').value = u.vehicle_capacity || '';
+        document.getElementById('edit-license-number').value = u.license_number || '';
+        document.getElementById('edit-organization').value = u.organization_name || '';
+    }
+
+    document.getElementById('update-modal').classList.add('open');
+}
+
+function closeModal() {
+    document.getElementById('update-modal').classList.remove('open');
+    editingId = null;
+}
+
+// Addition of event listiner on close modal button the x icon
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+document.getElementById('update-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('update-modal')) closeModal();
 });
 
-Promise.all([
-  loadStats(),
-  loadRequestsChart(),
-  loadStatusChart(),
-  loadLocationsChart(),
-  loadUsersGrid(),
-  loadNotifications()
-]).catch(err => console.error('Dashboard load error:', err));
+
+// Addition of an event listnener to the save changes button on the modal/ receipt like pop up containing user info
+document.getElementById('modal-save-btn').addEventListener('click', async () => {
+    if (!editingId) return;
+    const u = allUsers.find(u => String(u.user_id) === String(editingId));
+    const payload = {
+        full_name: document.getElementById('edit-name').value.trim(),
+        email:  document.getElementById('edit-email').value.trim(),
+        contact: document.getElementById('edit-phone').value.trim()
+    };
+
+    if (u && u.role === 'FARMER') {
+        payload.farm_location = document.getElementById('edit-farm-location').value.trim();
+    } else if (u && u.role === 'TRANSPORTER') {
+        payload.vehicle_type = document.getElementById('edit-vehicle-type').value.trim();
+        payload.vehicle_capacity = document.getElementById('edit-vehicle-capacity').value.trim();
+        payload.license_number = document.getElementById('edit-license-number').value.trim();
+        payload.organization_name = document.getElementById('edit-organization').value.trim();
+    }
+    try {
+        const res = await fetch (`${BASE_URL}/api/admin/users/${editingId}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Update failed.', 'error'); return; }
+        const u = allUsers.find(u => String(u.user_id) === String(editingId)) // Searching through the array of existing users to find the matching user with the same user_id to the user info that has just been editted
+        if (u) {
+            if (payload.full_name) u.full_name  = payload.full_name;
+            if (payload.email) u.email = payload.email
+        }
+        const card = document.querySelector(`.user-card[data-id="${editingId}"]`); // Referencing the specific uuid of the user when edits happen so they reflect when admin is done
+        if (card) {
+            if (payload.full_name) {
+                card.querySelector('.user-name').textContent = payload.full_name;
+            }
+            if (payload.email) card.querySelector('[data-field="email"]').textContent = payload.email
+        }
+        closeModal();
+        showToast('User updated successfully', 'success');
+    } catch (err) {
+        showToast('Cannot reach server. Is Flask running?', 'error')
+    }
+});
+
+// notification tab
+document.querySelectorAll('.notif-tab').forEach(tab => {
+    // This event listener allows the switching between the sections on the notification display i.e from the completed trips to the ratings and vice versa
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.notif-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+    });
+});
+
+// Stars for the ratings
+function starsHtml(n) {
+    let s = '<div class="star-row">';
+    for (let i = 1; i <= 5; i++) s += `<i class="fa-solid fa-star star${i > n ? ' empty' : ''}"></i>`;
+    return s + '</div>';
+}
+
+// trip notifications
+// fetches from the admin bookings endpoint (GET /api/admin/bookings) in the backend hence provides the admin with real time info about trips extracted directly from the db where the info is stored
+async function loadTripNotifs() {
+    const tripsList = document.getElementById('trips-list');
+    tripsList.innerHTML = '<p style="color:#6b8a88;padding:1rem;text-align:center;">Loading...</p>';
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/bookings`, { headers: authHeaders() });
+        if (!res.ok) throw new Error;
+        const bookings = await res.json();
+        if (!bookings.length) {
+            tripsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-truck"></i><p>No completed trips yet.</p></div>';
+            return;
+        }
+        // This will effectively display the detailed breakdown of the trip for the admin to see i.e the farmer and the matched transporter, accepted time etc
+        tripsList.innerHTML = bookings.map(b => `
+            <div>
+                <div class="notif-body">
+                    <div class="notif-text"><i class="fa-solid fa-truck" style="color:#4a6fa5;margin-right:0.4rem;"></i>Farmer ID ${b.farmer_id} → Transporter ID ${b.transporter_id}</div>
+                    <div class="notif-sub">Route: ${b.pickup_location} → ${b.destination_location} &bull; ${b.animal_quantity} ${b.animal_type}</div> 
+                </div>
+                <div class="notif-meta"><span class="notif-time">${b.accepted_at ? b.accepted_at.split('T')[0] : ''}</span></div>
+            </div>`).join('');
+    } catch {
+        tripsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>Could not load trip data.</p></div>';
+    }
+}
+
+// Rating notifications
+// Fetched from the GET /api/admin/ratings endpoint in the backend retrieving real time ratings
+async function loadRatingNotifs() {
+    const ratingsList = document.getElementById('ratings-list');
+    ratingsList.innerHTML = '<p style="color:#6b8a88;padding:1rem;text-align:center;">Loading...</p>';
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/ratings`, { headers: authHeaders() });
+        if (!res.ok) throw new Error();
+        const ratingsData = await res.json();
+        if (!ratingsData.length) {
+            ratingsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-star"></i><p>No ratings yet.</p></div>';
+            return;
+        }
+        // The rating display for respective rated transporters for the admin to view
+        ratingsList.innerHTML = ratingsData.map(r => `
+            <div class="notif-item">
+                <div class="notif-body">
+                    <div class="notif-text">Farmer ID <strong>${r.rating_by}</strong> rated Transporter ID <strong>${r.rating_for}</strong></div>
+                    ${starsHtml(r.score)}
+                    ${r.comment ? `<div class="notif-sub" style="margin-top:0.35rem;">"${r.comment}"</div>` : ''}
+                </div>
+            </div>`).join('');
+    } catch {
+        ratingsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>Could not load rating data.</p></div>';
+    }
+}
+
+// Toat message styling for success and errors
+function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (type? ' ' + type : '');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Dashboard stat cards showing total users, active requests and completed trips
+async function loadDashboardStats() {
+    const statValues = document.querySelectorAll('.stat-value');
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/users`, {headers: authHeaders() });
+        if (res.ok) {
+            const users = await res.json();
+            allUsers = users;
+            // Returning the number of users
+            if (statValues[0]) statValues[0].textContent = users.length;
+        }
+    } catch {}
+}

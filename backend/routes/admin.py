@@ -10,6 +10,9 @@ from models.booking import Bookings
 from models.rating import Rating
 from models.transport_request import TransportRequest
 from backend.utils.auth_decorator import require_role
+from charts.requests_vs_dates import get_requests_per_day
+from charts.status_breakdown import get_request_status_breakdown, get_booking_status_breakdown
+from charts.top_pickup_locations import get_top_pickup_locations, get_top_destination_locations
 
 admin = Blueprint('admin', __name__)
 
@@ -205,3 +208,50 @@ def get_all_ratings():
         return jsonify({"error": str(e)}), 500
     finally:
         session.close()
+
+
+# ── CHART ENDPOINTS ────────────────────────────────────────────────────────
+
+@admin.route('/admin/charts/requests-per-day', methods=['GET'])
+@require_role('ADMIN')
+def chart_requests_per_day():
+    try:
+        return jsonify(get_requests_per_day()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin.route('/admin/charts/status-breakdown', methods=['GET'])
+@require_role('ADMIN')
+def chart_status_breakdown():
+    try:
+        return jsonify(get_request_status_breakdown()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin.route('/admin/charts/booking-status-breakdown', methods=['GET'])
+@require_role('ADMIN')
+def chart_booking_status_breakdown():
+    try:
+        return jsonify(get_booking_status_breakdown()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin.route('/admin/charts/top-pickup-locations', methods=['GET'])
+@require_role('ADMIN')
+def chart_top_pickup_locations():
+    try:
+        return jsonify(get_top_pickup_locations()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin.route('/admin/charts/top-destination-locations', methods=['GET'])
+@require_role('ADMIN')
+def chart_top_destination_locations():
+    try:
+        return jsonify(get_top_destination_locations()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

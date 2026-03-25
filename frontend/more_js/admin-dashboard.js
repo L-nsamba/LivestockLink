@@ -323,3 +323,6 @@ async function loadDashboardStats() {
         }
     } catch {}
 }
+
+document.getElementById('panel-trips').classList.add('active');
+loadDashboardStats();

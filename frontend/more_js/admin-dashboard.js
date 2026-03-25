@@ -324,5 +324,49 @@ async function loadDashboardStats() {
     } catch {}
 }
 
+// Charts for frontend display
+let statusChart = null;
+
+async function loadStatusBreakdownChart() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/charts/status-breakdown`, {headers: authHeaders()});
+        if (!res.ok) throw new Error();
+        const chartData = await res.json();
+
+        if (statusChart) statusChart.destroy(); // Error handling to prevent chart duplication
+
+        statusChart = new Chart(document.getElementById('donutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    data: chartData.data,
+                    backgroundColor: ['#f5c518', '#4a6fa5', '#8bbcaa', '#27ae60', '#FF5C5C'],
+                    borderWidth: 2,
+                    borderColor: 'white'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { family: 'DM Sans', size: 12 }, padding: 16 }
+                    }
+                }
+            }
+        })
+    } catch {} // chart fails silently and nothing loads incase of error in backend
+}
+
+// Add the chart logic for requests(y) over dates (x) --> this would be like a line or bar graph
+// Add the chart logic for top pickup locations and top pickup destinations --> these can be bar graphs, or one vertical one horiztonal bar graph, your choice
+// then add the calls down below the loadstatusbreakdownchart
+// reference the endpoints that are existing in the admin file, chart endpints were added
+// will follow a similar structure to the chart I have above 
+
 document.getElementById('panel-trips').classList.add('active');
 loadDashboardStats();
+loadStatusBreakdownChart();

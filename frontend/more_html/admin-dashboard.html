@@ -196,9 +196,30 @@
                 <input class="form-input" id="edit-phone" type="text" placeholder="Phone number"/>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Location</label>
-                <input class="form-input" id="edit-location" type="text" placeholder="Location"/>
+            <!-- Farmer-specific fields -->
+            <div class="form-group" id="farmer-fields" style="display:none;">
+                <label class="form-label">Farm Location</label>
+                <input class="form-input" id="edit-farm-location" type="text" placeholder="Farm location"/>
+            </div>
+
+            <!-- Transporter-specific fields -->
+            <div id="transporter-fields" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">Vehicle Type</label>
+                    <input class="form-input" id="edit-vehicle-type" type="text" placeholder="Vehicle type"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vehicle Capacity</label>
+                    <input class="form-input" id="edit-vehicle-capacity" type="number" placeholder="Vehicle capacity"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">License Number</label>
+                    <input class="form-input" id="edit-license-number" type="text" placeholder="License number"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Organization (optional)</label>
+                    <input class="form-input" id="edit-organization" type="text" placeholder="Organization name"/>
+                </div>
             </div>
 
             <div class="modal-actions">

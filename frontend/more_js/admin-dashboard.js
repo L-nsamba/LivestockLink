@@ -84,6 +84,14 @@ function renderUsers(list) {
                 <span class="card-field-label">Email</span>
                 <span class="card-field-value" data-field="email">${u.email}</span>
             </div>
+            <div class="card-field">
+                <span class="card-field-label">Contact</span>
+                <span class="card-field-value" data-field="contact">${u.contact || '-'}</span>
+            </div>
+            <div class="card-field">
+                <span class="card-field-label">Joined</span>
+                <span class="card-field-value">${u.created_at || '-'}</span>
+            </div>
 
             <div class="card-actions">
                 <button class="btn-update" onclick="openUpdateModal('${u.user_id}')"><i class="fa-solid fa-pen-to-square"></i>Update</button>
@@ -140,11 +148,26 @@ let editingId = null;
 function openUpdateModal(id) {
     const u = allUsers.find(u => String(u.user_id) === String(id)); // Searching through the array of existing users to find the one which matches user_id of searched user
     if (!u) return;
-    editingId  = id
+    editingId = id;
     document.getElementById('edit-name').value = u.full_name;
     document.getElementById('edit-email').value = u.email;
-    document.getElementById('edit-phone').value = '';
-    document.getElementById('edit-location').value = '';
+    document.getElementById('edit-phone').value = u.contact || '';
+
+    // Hide all role-specific fields first, then show the relevant ones
+    document.getElementById('farmer-fields').style.display = 'none';
+    document.getElementById('transporter-fields').style.display = 'none';
+
+    if (u.role === 'FARMER') {
+        document.getElementById('farmer-fields').style.display = 'block';
+        document.getElementById('edit-farm-location').value = u.farm_location || '';
+    } else if (u.role === 'TRANSPORTER') {
+        document.getElementById('transporter-fields').style.display = 'block';
+        document.getElementById('edit-vehicle-type').value = u.vehicle_type || '';
+        document.getElementById('edit-vehicle-capacity').value = u.vehicle_capacity || '';
+        document.getElementById('edit-license-number').value = u.license_number || '';
+        document.getElementById('edit-organization').value = u.organization_name || '';
+    }
+
     document.getElementById('update-modal').classList.add('open');
 }
 
@@ -164,11 +187,21 @@ document.getElementById('update-modal').addEventListener('click', e => {
 // Addition of an event listnener to the save changes button on the modal/ receipt like pop up containing user info
 document.getElementById('modal-save-btn').addEventListener('click', async () => {
     if (!editingId) return;
+    const u = allUsers.find(u => String(u.user_id) === String(editingId));
     const payload = {
         full_name: document.getElementById('edit-name').value.trim(),
         email:  document.getElementById('edit-email').value.trim(),
         contact: document.getElementById('edit-phone').value.trim()
     };
+
+    if (u && u.role === 'FARMER') {
+        payload.farm_location = document.getElementById('edit-farm-location').value.trim();
+    } else if (u && u.role === 'TRANSPORTER') {
+        payload.vehicle_type = document.getElementById('edit-vehicle-type').value.trim();
+        payload.vehicle_capacity = document.getElementById('edit-vehicle-capacity').value.trim();
+        payload.license_number = document.getElementById('edit-license-number').value.trim();
+        payload.organization_name = document.getElementById('edit-organization').value.trim();
+    }
     try {
         const res = await fetch (`${BASE_URL}/api/admin/users/${editingId}`, {
             method: 'PUT',
@@ -231,7 +264,7 @@ async function loadTripNotifs() {
         tripsList.innerHTML = bookings.map(b => `
             <div>
                 <div class="notif-body">
-                    <div class="notif-text"><i class="fa-solid fa-truck" style="color:#4a6fa5;margin-right:0.4rem;"></i>Farmer ${b.farmer_id} → Transporter ${b.transporter_id}</div>
+                    <div class="notif-text"><i class="fa-solid fa-truck" style="color:#4a6fa5;margin-right:0.4rem;"></i>Farmer ID ${b.farmer_id} → Transporter ID ${b.transporter_id}</div>
                     <div class="notif-sub">Route: ${b.pickup_location} → ${b.destination_location} &bull; ${b.animal_quantity} ${b.animal_type}</div> 
                 </div>
                 <div class="notif-meta"><span class="notif-time">${b.accepted_at ? b.accepted_at.split('T')[0] : ''}</span></div>
@@ -258,7 +291,7 @@ async function loadRatingNotifs() {
         ratingsList.innerHTML = ratingsData.map(r => `
             <div class="notif-item">
                 <div class="notif-body">
-                    <div class="notif-text">Farmer <strong>${r.rating_by}</strong> rated Transporter <strong>${r.rating_for}</strong></div>
+                    <div class="notif-text">Farmer ID <strong>${r.rating_by}</strong> rated Transporter ID <strong>${r.rating_for}</strong></div>
                     ${starsHtml(r.score)}
                     ${r.comment ? `<div class="notif-sub" style="margin-top:0.35rem;">"${r.comment}"</div>` : ''}
                 </div>

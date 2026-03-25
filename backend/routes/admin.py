@@ -60,16 +60,32 @@ def register_admin():
 def get_all_users():
     session = Session()
     users = session.query(User).all()
-    
-    return jsonify([
-        {
+
+    result = []
+    for user in users:
+        entry = {
             "user_id": user.user_id,
             "full_name": user.full_name,
             "email": user.email,
-            "role": user.role
+            "contact": user.contact,
+            "role": user.role,
+            "created_at": user.created_at.strftime('%d %b %Y') if user.created_at else None
         }
-        for user in users
-    ]), 200
+        if user.role == 'FARMER':
+            farmer = session.query(Farmer).filter_by(user_id=user.user_id).first()
+            if farmer:
+                entry['farm_location'] = farmer.farm_location
+        elif user.role == 'TRANSPORTER':
+            transporter = session.query(Transporter).filter_by(user_id=user.user_id).first()
+            if transporter:
+                entry['vehicle_type'] = transporter.vehicle_type
+                entry['vehicle_capacity'] = transporter.vehicle_capacity
+                entry['license_number'] = transporter.license_number
+                entry['organization_name'] = transporter.organization_name
+        result.append(entry)
+
+    session.close()
+    return jsonify(result), 200
 
 
 # Get request to retrieve existing users by id
@@ -95,7 +111,7 @@ def update_user(user_id):
     user = session.query(User).filter_by(user_id=user_id).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
-    
+
     data = request.get_json()
     if 'full_name' in data:
         user.full_name = data['full_name']
@@ -103,8 +119,25 @@ def update_user(user_id):
         user.email = data['email']
     if 'contact' in data:
         user.contact = data['contact']
-    
+
+    if user.role == 'FARMER':
+        farmer = session.query(Farmer).filter_by(user_id=user_id).first()
+        if farmer and 'farm_location' in data:
+            farmer.farm_location = data['farm_location']
+    elif user.role == 'TRANSPORTER':
+        transporter = session.query(Transporter).filter_by(user_id=user_id).first()
+        if transporter:
+            if 'vehicle_type' in data:
+                transporter.vehicle_type = data['vehicle_type']
+            if 'vehicle_capacity' in data:
+                transporter.vehicle_capacity = data['vehicle_capacity']
+            if 'license_number' in data:
+                transporter.license_number = data['license_number']
+            if 'organization_name' in data:
+                transporter.organization_name = data['organization_name']
+
     session.commit()
+    session.close()
     return jsonify({"message": "User updated"}), 200
 
 # DELETE method to remove user

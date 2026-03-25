@@ -6,6 +6,9 @@ from database.db import Session
 from models.user import User
 from models.farmer import Farmer
 from models.transporter import Transporter
+from models.booking import Bookings
+from models.rating import Rating
+from models.transport_request import TransportRequest
 from backend.utils.auth_decorator import require_role
 
 admin = Blueprint('admin', __name__)
@@ -112,7 +115,60 @@ def delete_user(user_id):
     user = session.query(User).filter_by(user_id=user_id).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
-    
+
     session.delete(user)
     session.commit()
     return jsonify({"message": "User deleted"}), 200
+
+
+# GET all bookings (for admin notifications / trip feed)
+@admin.route('/admin/bookings', methods=['GET'])
+@require_role('ADMIN')
+def get_all_bookings():
+    session = Session()
+    try:
+        bookings = session.query(Bookings).all()
+        result = []
+        for b in bookings:
+            req = b.transport_request
+            result.append({
+                "booking_id": b.booking_id,
+                "transporter_id": b.transporter_id,
+                "farmer_id": req.farmer_id if req else None,
+                "pickup_location": req.pickup_location if req else None,
+                "destination_location": req.destination_location if req else None,
+                "animal_type": req.animal_type if req else None,
+                "animal_quantity": req.animal_quantity if req else None,
+                "status": b.status,
+                "accepted_at": b.accepted_at.isoformat() if b.accepted_at else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+
+# GET all ratings (for admin notifications / ratings feed)
+@admin.route('/admin/ratings', methods=['GET'])
+@require_role('ADMIN')
+def get_all_ratings():
+    session = Session()
+    try:
+        ratings = session.query(Rating).all()
+        result = []
+        for r in ratings:
+            result.append({
+                "rating_id": r.rating_id,
+                "booking_id": r.booking_id,
+                "rating_by": r.rating_by,
+                "rating_for": r.rating_for,
+                "score": r.score,
+                "comment": r.comment,
+                "created_at": r.created_at.isoformat() if r.created_at else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()

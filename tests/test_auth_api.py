@@ -125,6 +125,19 @@ def test_login_invalid_password(client):
 
 # Test 4: Login fails when the wrong role is selected
 def test_login_invalid_role(client):
+    # Ensure the user exists before testing the role check
+    client.post('/api/auth/register', json={
+        "full_name": "Leon Transporter",
+        "contact": "0795333333",
+        "email": "leontransporter@livestocklink.com",
+        "password": "12345678",
+        "role": "TRANSPORTER",
+        "vehicle_type": "Van",
+        "vehicle_capacity": 5,
+        "license_number": "RAC456Y",
+        "organisation_name": "LeonMove Ltd"
+    })
+
     response = client.post('/api/auth/login', json={
         "email": "leontransporter@livestocklink.com",
         "password": "12345678",

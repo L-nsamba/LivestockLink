@@ -326,6 +326,9 @@ async function loadDashboardStats() {
 
 // Charts for frontend display
 let statusChart = null;
+let requestsChart = null;
+let pickupLocationsChart = null;
+let destinationLocationsChart = null;
 
 async function loadStatusBreakdownChart() {
     try {
@@ -361,7 +364,64 @@ async function loadStatusBreakdownChart() {
     } catch {} // chart fails silently and nothing loads incase of error in backend
 }
 
-// Add the chart logic for requests(y) over dates (x) --> this would be like a line or bar graph
+// Addition of chart logic for requests(y) over dates (x) --> this is a bar graph
+async function loadRequestsPerDayChart() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/charts/requests-per-day`, {
+            headers: authHeaders()
+        });
+        if (!res.ok) throw new Error();
+        const chartData = await res.json();
+
+        if (requestsChart) requestsChart.destroy();
+
+        requestsChart = new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Requests',
+                    data: chartData.data,
+                    backgroundColor: '#2361ba',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display:true,
+                        text: 'Requests Per Day',
+                        font: { family: 'DM Sans', size: 12 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            font: { family: 'DM Sans', size: 11 }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0,
+                            font: { family: 'DM Sans', size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Failed to load requests-per-day chart:', err);
+    }
+}
+
+
+
 // Add the chart logic for top pickup locations and top pickup destinations --> these can be bar graphs, or one vertical one horiztonal bar graph, your choice
 // then add the calls down below the loadstatusbreakdownchart
 // reference the endpoints that are existing in the admin file, chart endpints were added
@@ -370,3 +430,4 @@ async function loadStatusBreakdownChart() {
 document.getElementById('panel-trips').classList.add('active');
 loadDashboardStats();
 loadStatusBreakdownChart();
+loadRequestsPerDayChart();

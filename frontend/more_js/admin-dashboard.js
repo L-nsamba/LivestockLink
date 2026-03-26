@@ -327,8 +327,8 @@ async function loadDashboardStats() {
 // Charts for frontend display
 let statusChart = null;
 let requestsChart = null;
-let pickupLocationsChart = null;
-let destinationLocationsChart = null;
+let topPickupLocationsChart = null;
+let topDestinationLocationsChart = null;
 
 async function loadStatusBreakdownChart() {
     try {
@@ -420,14 +420,75 @@ async function loadRequestsPerDayChart() {
     }
 }
 
+// Addition of chart logic for top pickup locations and top pickup destinations --> these can be bar graphs, or one vertical one horiztonal bar graph, your choice
+async function loadTopPickupLocationsChart() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/charts/top-pickup-locations`, {
+            headers: authHeaders()
+        });
+        if (!res.ok) throw new Error();
+        const chartData = await res.json();
+
+        //Empty data checks for debugging
+        if (!chartData.labels.length || !chartData.data.length) {
+            console.warn('No chart data available.');
+            return;
+        }
+
+        if (topPickupLocationsChart) topPickupLocationsChart.destroy();
+
+        topPickupLocationsChart = new Chart(document.getElementById('hbarChart'), {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Top Pickup Locations',
+                    data: chartData.data,
+                    backgroundColor: '#2361ba',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display:true,
+                        text: 'Top Pickup Locations',
+                        font: { family: 'DM Sans', size: 12 }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0,
+                            font: { family: 'DM Sans', size: 11 }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: { family: 'DM Sans', size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Failed to load top-pickup-locations chart:', err);
+    }
+}
 
 
-// Add the chart logic for top pickup locations and top pickup destinations --> these can be bar graphs, or one vertical one horiztonal bar graph, your choice
-// then add the calls down below the loadstatusbreakdownchart
-// reference the endpoints that are existing in the admin file, chart endpints were added
-// will follow a similar structure to the chart I have above 
+
 
 document.getElementById('panel-trips').classList.add('active');
 loadDashboardStats();
 loadStatusBreakdownChart();
 loadRequestsPerDayChart();
+loadTopPickupLocationsChart();
+loadTopDestinationLocationsChart();

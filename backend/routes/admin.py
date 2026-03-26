@@ -2,6 +2,7 @@ import os
 import bcrypt
 from dotenv import load_dotenv
 from flask import Blueprint, request, jsonify
+from sqlalchemy.orm import aliased
 from database.db import Session
 from models.user import User
 from models.farmer import Farmer
@@ -163,21 +164,31 @@ def delete_user(user_id):
 def get_all_bookings():
     session = Session()
     try:
-        bookings = session.query(Bookings).all()
-        result = []
-        for b in bookings:
-            req = b.transport_request
-            result.append({
-                "booking_id": b.booking_id,
-                "transporter_id": b.transporter_id,
-                "farmer_id": req.farmer_id if req else None,
-                "pickup_location": req.pickup_location if req else None,
-                "destination_location": req.destination_location if req else None,
-                "animal_type": req.animal_type if req else None,
-                "animal_quantity": req.animal_quantity if req else None,
-                "status": b.status,
-                "accepted_at": b.accepted_at.isoformat() if b.accepted_at else None
-            })
+        FarmerUser = aliased(User)
+        TransporterUser = aliased(User)
+        # referencing the booking_id, request_id to the actual  user names as opposed to showing the uuid string
+        results = session.query(Bookings, TransportRequest, FarmerUser, TransporterUser).join(
+            TransportRequest, Bookings.request_id == TransportRequest.request_id
+        ).join(
+            FarmerUser, FarmerUser.user_id == TransportRequest.farmer_id
+        ).join(
+            TransporterUser, TransporterUser.user_id == Bookings.transporter_id
+        ).all()
+
+        result = [{
+            "booking_id": b.booking_id,
+            "transporter_id": b.transporter_id,
+            "transporter_name": tu.full_name,
+            "farmer_id": req.farmer_id,
+            "farmer_name": fu.full_name,
+            "pickup_location": req.pickup_location,
+            "destination_location": req.destination_location,
+            "animal_type": req.animal_type,
+            "animal_quantity": req.animal_quantity,
+            "status": b.status,
+            "accepted_at": b.accepted_at.isoformat() if b.accepted_at else None
+        } for b, req, fu, tu in results]
+
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -191,18 +202,27 @@ def get_all_bookings():
 def get_all_ratings():
     session = Session()
     try:
-        ratings = session.query(Rating).all()
-        result = []
-        for r in ratings:
-            result.append({
-                "rating_id": r.rating_id,
-                "booking_id": r.booking_id,
-                "rating_by": r.rating_by,
-                "rating_for": r.rating_for,
-                "score": r.score,
-                "comment": r.comment,
-                "created_at": r.created_at.isoformat() if r.created_at else None
-            })
+        RaterUser = aliased(User) # Introduced alias to be able to reference the user table and extract out the actual user names as opposed to displaying the uuid user id
+        RatedUser = aliased(User)
+        # Joining the rater and ratee id to their respective user names from the user table
+        results = session.query(Rating, RaterUser, RatedUser).join(
+            RaterUser, RaterUser.user_id == Rating.rating_by
+        ).join(
+            RatedUser, RatedUser.user_id == Rating.rating_for
+        ).all()
+
+        result = [{
+            "rating_id": r.rating_id,
+            "booking_id": r.booking_id,
+            "rating_by": r.rating_by,
+            "rating_by_name": ru.full_name,
+            "rating_for": r.rating_for,
+            "rating_for_name": rd.full_name,
+            "score": r.score,
+            "comment": r.comment,
+            "created_at": r.created_at.isoformat() if r.created_at else None
+        } for r, ru, rd in results]
+
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

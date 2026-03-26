@@ -264,7 +264,7 @@ async function loadTripNotifs() {
         tripsList.innerHTML = bookings.map(b => `
             <div>
                 <div class="notif-body">
-                    <div class="notif-text"><i class="fa-solid fa-truck" style="color:#4a6fa5;margin-right:0.4rem;"></i>Farmer ID ${b.farmer_id} → Transporter ID ${b.transporter_id}</div>
+                    <div class="notif-text"><i class="fa-solid fa-truck" style="color:#4a6fa5;margin-right:0.4rem;"></i>${b.farmer_name || b.farmer_id} → ${b.transporter_name || b.transporter_id}</div>
                     <div class="notif-sub">Route: ${b.pickup_location} → ${b.destination_location} &bull; ${b.animal_quantity} ${b.animal_type}</div> 
                 </div>
                 <div class="notif-meta"><span class="notif-time">${b.accepted_at ? b.accepted_at.split('T')[0] : ''}</span></div>
@@ -291,7 +291,7 @@ async function loadRatingNotifs() {
         ratingsList.innerHTML = ratingsData.map(r => `
             <div class="notif-item">
                 <div class="notif-body">
-                    <div class="notif-text">Farmer ID <strong>${r.rating_by}</strong> rated Transporter ID <strong>${r.rating_for}</strong></div>
+                    <div class="notif-text"><strong>${r.rating_by_name || r.rating_by}</strong> rated <strong>${r.rating_for_name || r.rating_for}</strong></div>
                     ${starsHtml(r.score)}
                     ${r.comment ? `<div class="notif-sub" style="margin-top:0.35rem;">"${r.comment}"</div>` : ''}
                 </div>

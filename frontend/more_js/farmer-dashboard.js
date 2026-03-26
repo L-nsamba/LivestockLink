@@ -133,7 +133,7 @@ async function loadHistory()  {
         tbody.innerHTML = requests.map(r => `
             <tr>
                 <td class="cb-col"><input type="checkbox" class="row-cb"/></td>
-                <td data-label="Transporter ID">${r.transporter_id || '<span style="color: #6b8a88">Unassigned</span'}</td>
+                <td data-label="Transporter">${r.transporter_name || r.transporter_id || '<span style="color: #6b8a88">Unassigned</span'}</td>
                 <td data-label="Pickup">${r.pickup_location}</td>
                 <td data-label="Dropoff">${r.destination_location}</td>
                 <td data-label="Date">${formatDate(r.pickup_date)}</td>

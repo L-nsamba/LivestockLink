@@ -58,8 +58,8 @@ function buildCard(r) {
     return `
         <div class="request-card" id="card-${r.request_id}">
             <div class="card-field">
-                <span class="card-field-label">Farmer ID</span>
-                <span class="card-field-value">${r.farmer_id}</span>
+                <span class="card-field-label">Farmer</span>
+                <span class="card-field-value">${r.farmer_name || r.farmer_id}</span>
             </div>
 
             <div class="card-field">
@@ -142,7 +142,7 @@ async function loadDashboard() {
 
         tbody.innerHTML = recents.map(b => {
             const dateStr = b.accepted_at ? b.accepted_at.split('T')[0].split(' ')[0] : '-';
-            const farmerLabel = b.farmer_id || '-';
+            const farmerLabel = b.farmer_name || b.farmer_id || '-';
             const route = b.pickup_location
                 ? `${b.pickup_location} to ${b.destination_location}`
                 : `Request ${b.request_id}`;
@@ -347,7 +347,7 @@ async function loadHistory() {
 
             return `
                 <tr id="history-row-${b.booking_id}">
-                    <td data-label="Farmer ID">${b.farmer_id || '-'}</td>
+                    <td data-label="Farmer">${b.farmer_name || b.farmer_id || '-'}</td>
                     <td data-label="Trip Details" class="trip-route">${route}</td>
                     <td data-label="Date Accepted">${dateStr}</td>
                     <td data-label="Status"><span class="status-badge ${b.status.toLowerCase()}">${b.status.replace('_',' ')}</span></td>

@@ -9,6 +9,7 @@ from flask import Blueprint, request, jsonify
 from database.db import Session
 from models.booking import Bookings
 from models.transport_request import TransportRequest
+from models.user import User
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 bookings = Blueprint('bookings', __name__)
@@ -77,9 +78,11 @@ def get_transporter_bookings(transporter_id):
         if get_current_user_id() != transporter_id:
             return jsonify({"error": "Unauthorized"}), 403
 
-        # Joining the bookings and transport request table to be able to extract out more informative fields about the trip
-        results = session.query(Bookings, TransportRequest).join(
+        # Joining the bookings and transport request table to be able to extract out more informative fields about the trip as ppposed to displaying the uuid string
+        results = session.query(Bookings, TransportRequest, User).join(
             TransportRequest, Bookings.request_id == TransportRequest.request_id
+        ).join(
+            User, User.user_id == TransportRequest.farmer_id
         ).filter(Bookings.transporter_id == transporter_id).all()
 
         return jsonify([{
@@ -89,13 +92,14 @@ def get_transporter_bookings(transporter_id):
             "accepted_at":          str(b.accepted_at),
             "status":               b.status,
             "farmer_id":            r.farmer_id,
+            "farmer_name":          u.full_name,
             "pickup_location":      r.pickup_location,
             "destination_location": r.destination_location,
             "pickup_date":          str(r.pickup_date),
             "animal_type":          r.animal_type,
             "animal_quantity":      r.animal_quantity,
             "notes":                r.notes
-        } for b, r in results]), 200
+        } for b, r, u in results]), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

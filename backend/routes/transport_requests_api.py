@@ -6,9 +6,11 @@
 # DELETE (Farmer cancels a request) --> /api/requests/<request_id>
 
 from flask import Blueprint, request, jsonify
+from sqlalchemy.orm import aliased
 from database.db import Session
 from models.transport_request import TransportRequest
 from models.booking import Bookings
+from models.user import User
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 transport_requests = Blueprint('transport_request', __name__)
@@ -53,11 +55,14 @@ def create_request():
 def get_all_requests():
     session = Session()
     try:
-        pending_requests = session.query(TransportRequest).filter_by(status='PENDING').all()
+        results = session.query(TransportRequest, User).join(
+            User, User.user_id == TransportRequest.farmer_id
+        ).filter(TransportRequest.status == 'PENDING').all()
 
         return jsonify([{
             "request_id" : r.request_id,
             "farmer_id" : r.farmer_id,
+            "farmer_name" : u.full_name,
             "pickup_location" : r.pickup_location,
             "destination_location" : r.destination_location,
             "pickup_date" : str(r.pickup_date),
@@ -66,7 +71,7 @@ def get_all_requests():
             "status" : r.status,
             "notes" : r.notes,
             "created_at" : str(r.created_at),
-        } for r in pending_requests]), 200
+        } for r, u in results]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -81,8 +86,11 @@ def get_farmer_requests(farmer_id):
         if get_current_user_id() != farmer_id:
             return jsonify({"error": "Unauthorized"}), 403
 
-        results = session.query(TransportRequest, Bookings).outerjoin(
+        TransporterUser = aliased(User)
+        results = session.query(TransportRequest, Bookings, TransporterUser).outerjoin(
             Bookings, Bookings.request_id == TransportRequest.request_id
+        ).outerjoin(
+            TransporterUser, TransporterUser.user_id == Bookings.transporter_id
         ).filter(TransportRequest.farmer_id == farmer_id).all()
 
         return jsonify([{
@@ -98,7 +106,8 @@ def get_farmer_requests(farmer_id):
             "created_at" : str(r.created_at),
             "booking_id" : b.booking_id if b else None,
             "transporter_id" : b.transporter_id if b else None,
-        } for r, b in results]), 200
+            "transporter_name" : tu.full_name if tu else None,
+        } for r, b, tu in results]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

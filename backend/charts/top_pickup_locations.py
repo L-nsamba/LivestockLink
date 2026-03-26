@@ -2,7 +2,7 @@ from database.db import Session
 from models.transport_request import TransportRequest
 from sqlalchemy import func
 
-def get_top_pickup_locations(limit=7):
+def get_top_pickup_locations(limit=4):
     """
     Returns the most frequently requested pickup locations.
     Used by: GET /api/admin/charts/top-pickup-locations
@@ -26,7 +26,7 @@ def get_top_pickup_locations(limit=7):
         session.close()
 
 
-def get_top_destination_locations(limit=7):
+def get_top_destination_locations(limit=4):
     """
     Returns the most frequently requested destination locations.
     Easy to add as a second chart alongside pickup locations.

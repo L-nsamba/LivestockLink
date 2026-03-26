@@ -210,6 +210,26 @@ def get_all_ratings():
         session.close()
 
 
+# GET dashboard summary stats (total users, active requests, completed trips)
+@admin.route('/admin/stats', methods=['GET'])
+@require_role('ADMIN')
+def get_dashboard_stats():
+    session = Session()
+    try:
+        total_users = session.query(User).count()
+        active_requests = session.query(TransportRequest).filter_by(status='PENDING').count()
+        completed_trips = session.query(Bookings).filter_by(status='DELIVERED').count()
+        return jsonify({
+            "total_users": total_users,
+            "active_requests": active_requests,
+            "completed_trips": completed_trips
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+
 # ── CHART ENDPOINTS ────────────────────────────────────────────────────────
 
 @admin.route('/admin/charts/requests-per-day', methods=['GET'])

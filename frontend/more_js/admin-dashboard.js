@@ -314,12 +314,12 @@ function showToast(msg, type = '') {
 async function loadDashboardStats() {
     const statValues = document.querySelectorAll('.stat-value');
     try {
-        const res = await fetch(`${BASE_URL}/api/admin/users`, {headers: authHeaders() });
+        const res = await fetch(`${BASE_URL}/api/admin/stats`, {headers: authHeaders() });
         if (res.ok) {
-            const users = await res.json();
-            allUsers = users;
-            // Returning the number of users
-            if (statValues[0]) statValues[0].textContent = users.length;
+            const stats = await res.json();
+            if (statValues[0]) statValues[0].textContent = stats.total_users;
+            if (statValues[1]) statValues[1].textContent = stats.active_requests;
+            if (statValues[2]) statValues[2].textContent = stats.completed_trips;
         }
     } catch {}
 }

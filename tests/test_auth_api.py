@@ -62,7 +62,7 @@ def test_register_farmer_success(client):
         assert data["error"] == "Email already in use"
 
 # Test 4: A successful transporter registration
-def test_registration_transporter_success(client):
+def test_register_transporter_success(client):
     response = client.post('/api/auth/register', json={
         "full_name": "Michael Transporter",
         "contact": "0795222222",
@@ -72,7 +72,7 @@ def test_registration_transporter_success(client):
         "vehicle_type": "Truck",
         "vehicle_capacity": 15,
         "license_number": "RAB123X",
-        "organisation_name": "MoveFast Ltd"
+        "organization_name": "MoveFast Ltd"
     })
 
     assert response.status_code in [201, 409]
@@ -87,7 +87,7 @@ def test_registration_transporter_success(client):
 # Login Tests
 
 # Test 1 : Test login with missing fields
-def test_lgin_missing_fields(client):
+def test_login_missing_fields(client):
     response = client.post('/api/auth/login', json={
         "email": "leon@livestocklink.com",
     })

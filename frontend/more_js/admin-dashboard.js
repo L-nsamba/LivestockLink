@@ -483,7 +483,67 @@ async function loadTopPickupLocationsChart() {
     }
 }
 
+async function loadTopDestinationLocationsChart() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/charts/top-destination-locations`, {
+            headers: authHeaders()
+        });
+        if (!res.ok) throw new Error();
+        const chartData = await res.json();
 
+                //Empty data checks for debugging
+        if (!chartData.labels.length || !chartData.data.length) {
+            console.warn('No chart data available.');
+            return;
+        }
+
+        if (topDestinationLocationsChart) topDestinationLocationsChart.destroy();
+
+        topDestinationLocationsChart = new Chart(document.getElementById('hbarChartDest'), {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Top Destination Locations',
+                    data: chartData.data,
+                    backgroundColor: '#31d69a',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display:true,
+                        text: 'Top Destination Locations',
+                        font: { family: 'DM Sans', size: 12 }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0,
+                            font: { family: 'DM Sans', size: 11 }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: { family: 'DM Sans', size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Failed to load top-destination-locations chart:', err);
+    }
+}
 
 
 document.getElementById('panel-trips').classList.add('active');

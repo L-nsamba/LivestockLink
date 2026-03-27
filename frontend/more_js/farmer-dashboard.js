@@ -1,4 +1,4 @@
-const BASE_URL = 'http://127.0.0.1:5000';
+const BASE_URL = 'https://livestocklink.leonnsamba.tech';
 
 // Grabbing user information from localStorage, this information is set when a user logins in
 const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}')

@@ -1,6 +1,6 @@
 import { showToast, togglePassword } from "./login.js";
 
-const BASE_URL = 'http://127.0.0.1:5000'
+const BASE_URL = 'https://livestocklink.leonnsamba.tech'
 
 // Validation to ensure user enters required valid information in all fields of the form
 function validateForm(data) {

@@ -1,4 +1,4 @@
-const BASE_URL = 'https://livestocklink.leonnsamba.tech';
+const BASE_URL = 'http://127.0.0.1:5000';
 
 // This function ensures the provision of interactive feedback messages to user like error, success
 export function showToast(message, type= '') {

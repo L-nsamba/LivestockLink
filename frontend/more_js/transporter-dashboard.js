@@ -1,4 +1,4 @@
-const BASE_URL = 'https://livestocklink.leonnsamba.tech'
+const BASE_URL = 'http://127.0.0.1:5000'
 
 // Extracting tokens from local storage after login
 function getToken() {return sessionStorage.getItem('token')};

@@ -25,6 +25,8 @@ In your DNS management panel create a new A Record:
 - **Destination IP:** your server IP
 - **Status:** Active
 
+<img src="../screenshots/deployment_dns_configuration.png" width=800/>
+
 ---
 
 ## 2. Server Setup

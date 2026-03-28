@@ -72,8 +72,8 @@ async function handleRegister() {
         const result = await  response.json();
 
             if (response.ok) {
-                localStorage.setItem('token', result.token || '');
-                localStorage.setItem('user', JSON.stringify(result.user || {}));
+                sessionStorage.setItem('token', result.token || '');
+                sessionStorage.setItem('user', JSON.stringify(result.user || {}));
                 showToast('Account created! Redirecting....', 'success');
                 const role = result.user?.role;
                 setTimeout(() => {

@@ -67,15 +67,24 @@ def register():
 
         session.commit()
         token = generate_token(new_user.user_id, new_user.role)
+
+        user_data = {
+            "user_id": new_user.user_id,
+            "full_name": new_user.full_name,
+            "email": new_user.email,
+            "role": new_user.role
+        }
+
+        # Role-specific ID responses
+        if data['role'] == 'FARMER':
+            user_data["farmer_id"] = farmer.farmer_id
+        elif data['role'] == 'TRANSPORTER':
+            user_data["transporter_id"] = transporter.transporter_id
+
         return jsonify({
             "message": "User created",
             "token": token,
-            "user": {
-                "user_id": new_user.user_id,
-                "full_name": new_user.full_name,
-                "email": new_user.email,
-                "role": new_user.role
-            }
+            "user": user_data
         }), 201
     except Exception as e:
         session.rollback()
@@ -122,16 +131,26 @@ def login():
 
         # Token creation
         token = generate_token(user.user_id, user.role)
+
+        user_data = {
+            "user_id": user.user_id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role
+        }
+
+        if user.role == 'FARMER':
+            farmer = session.query(Farmer).filter_by(user_id=user.user_id).first()
+            user_data["farmer_id"] = farmer.farmer_id if farmer else None
+        elif user.role  == 'TRANSPORTER':
+            transporter = session.query(Transporter).filter_by(user_id=user.user_id).first()
+            user_data["transporter_id"] = transporter.transporter_id if transporter else None
+
         #Retun Successful login response
         return jsonify({
             "message": "Login successful",
             "token": token,
-            "user": {
-                "user_id": user.user_id,
-                "full_name": user.full_name,
-                "email": user.email,
-                "role": user.role
-            }
+            "user": user_data
         }), 200
     except Exception:
         return jsonify({"error": "Login failed"}), 500

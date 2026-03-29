@@ -6,7 +6,7 @@ Livestock Link is a web-based platform that connects farmers with livestock tran
 ---
 
 ## 📹 Video Walkthrough & Live Deployment URL
-* Link to Video Walkthrough - coming soon......
+* Link to Video Walkthrough - [https://youtu.be/_LvXu-Lu424?si=B1eUeuqFcYEtUo4q)
 * Link to Live Deployment - [https://livestocklink.leonnsamba.tech](https://livestocklink.leonnsamba.tech)
 
 ---

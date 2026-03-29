@@ -79,7 +79,7 @@ def register():
         if data['role'] == 'FARMER':
             user_data["farmer_id"] = farmer.user_id
         elif data['role'] == 'TRANSPORTER':
-            user_data["transporter_id"] = transporter.transporter_id
+            user_data["transporter_id"] = transporter.user_id
 
         return jsonify({
             "message": "User created",
@@ -144,7 +144,7 @@ def login():
             user_data["farmer_id"] = farmer.user_id if farmer else None
         elif user.role  == 'TRANSPORTER':
             transporter = session.query(Transporter).filter_by(user_id=user.user_id).first()
-            user_data["transporter_id"] = transporter.transporter_id if transporter else None
+            user_data["transporter_id"] = transporter.user_id if transporter else None
 
         #Retun Successful login response
         return jsonify({

@@ -11,6 +11,7 @@ from models.booking import Bookings
 from models.rating import Rating
 from models.transport_request import TransportRequest
 from backend.utils.auth_decorator import require_role
+from backend.utils.jwt_utils import generate_token
 from charts.requests_vs_dates import get_requests_per_day
 from charts.status_breakdown import get_request_status_breakdown, get_booking_status_breakdown
 from charts.top_pickup_locations import get_top_pickup_locations, get_top_destination_locations
@@ -50,7 +51,14 @@ def register_admin():
 
         session.add(new_admin)
         session.commit()
-        return jsonify({"message": "Admin created", "user_id": new_admin.user_id}), 201
+        token = generate_token(new_admin.user_id, new_admin.role)
+        user_data = {
+            "user_id": new_admin.user_id,
+            "full_name": new_admin.full_name,
+            "email": new_admin.email,
+            "role": new_admin.role
+        }
+        return jsonify({"message": "Admin created", "token": token, "user": user_data}), 201
     except Exception as e:
         session.rollback()
         return jsonify({"error": str(e)}), 500

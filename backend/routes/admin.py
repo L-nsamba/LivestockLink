@@ -157,13 +157,45 @@ def update_user(user_id):
 @require_role('ADMIN')
 def delete_user(user_id):
     session = Session()
-    user = session.query(User).filter_by(user_id=user_id).first()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    try:
+        user = session.query(User).filter_by(user_id=user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
 
-    session.delete(user)
-    session.commit()
-    return jsonify({"message": "User deleted"}), 200
+        # Delete ratings involving this user
+        session.query(Rating).filter(
+            (Rating.rating_by == user_id) | (Rating.rating_for == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete bookings where user is the transporter
+        booking_ids = [b.booking_id for b in session.query(Bookings).filter_by(transporter_id=user_id).all()]
+        if booking_ids:
+            session.query(Rating).filter(Rating.booking_id.in_(booking_ids)).delete(synchronize_session=False)
+            session.query(Bookings).filter(Bookings.booking_id.in_(booking_ids)).delete(synchronize_session=False)
+
+        # Delete transport requests (and their bookings/ratings) where user is the farmer
+        requests = session.query(TransportRequest).filter_by(farmer_id=user_id).all()
+        for req in requests:
+            booking = session.query(Bookings).filter_by(request_id=req.request_id).first()
+            if booking:
+                session.query(Rating).filter_by(booking_id=booking.booking_id).delete(synchronize_session=False)
+                session.delete(booking)
+            session.delete(req)
+
+        # Delete farmer or transporter profile
+        if user.role == 'FARMER':
+            session.query(Farmer).filter_by(user_id=user_id).delete(synchronize_session=False)
+        elif user.role == 'TRANSPORTER':
+            session.query(Transporter).filter_by(user_id=user_id).delete(synchronize_session=False)
+
+        session.delete(user)
+        session.commit()
+        return jsonify({"message": "User deleted"}), 200
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
 
 
 # GET all bookings (for admin notifications / trip feed)

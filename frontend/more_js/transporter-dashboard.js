@@ -455,9 +455,10 @@ function showToast(msg, type) {
 
 // Logout Button
 function logout() {
+    const notifKey = getNotifKey();
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user_id');
-    localStorage.removeItem(getNotifKey());
+    localStorage.removeItem(notifKey);
     window.location.href = '../more_html/login.html';
 }
 

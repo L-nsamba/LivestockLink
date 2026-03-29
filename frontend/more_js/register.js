@@ -74,6 +74,7 @@ async function handleRegister() {
             if (response.ok) {
                 sessionStorage.setItem('token', result.token || '');
                 sessionStorage.setItem('user', JSON.stringify(result.user || {}));
+                sessionStorage.setItem('user_id', result.user?.user_id || '');
                 showToast('Account created! Redirecting....', 'success');
                 const role = result.user?.role;
                 setTimeout(() => {

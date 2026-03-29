@@ -378,6 +378,7 @@ function formatStatus(s) {
 function handleLogout() {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('user_id');
     window.location.href = 'login.html';
 }
 

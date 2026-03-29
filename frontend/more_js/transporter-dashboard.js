@@ -15,10 +15,11 @@ function authHeaders () {
 // Simulation of accepting and declining requests locally
 let dismissedRequestIds = new Set();
 let currentModalRequest = null;
-let notifications = JSON.parse(localStorage.getItem('transporter_notifications') || '[]'); // Local notification storage
+function getNotifKey() { return `transporter_notifications_${getTransporterId()}`; }
+let notifications = JSON.parse(localStorage.getItem(getNotifKey()) || '[]'); // Local notification storage
 
 function saveNotifications() {
-    localStorage.setItem('transporter_notifications', JSON.stringify(notifications) || '[]');
+    localStorage.setItem(getNotifKey(), JSON.stringify(notifications) || '[]');
 }
 
 const requestCache = {}; // Stores full request objects, populated when loading the request endpoint calls
@@ -456,7 +457,7 @@ function showToast(msg, type) {
 function logout() {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user_id');
-    localStorage.removeItem('transporter_notifications');
+    localStorage.removeItem(getNotifKey());
     window.location.href = '../more_html/login.html';
 }
 

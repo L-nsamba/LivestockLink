@@ -278,6 +278,7 @@ function openTripModal(r) {
         <div class="receipt-row"><span class="receipt-label">Animal Type</span><span class="receipt-value">${r.animal_type}</span></div>
         <div class="receipt-row"><span class="receipt-label">Quantity</span><span class="receipt-value">${r.animal_quantity}</span></div>
         <div class="receipt-row"><span class="receipt-label">Transporter ID</span><span class="receipt-value">${r.transporter_id || 'Awaiting match'}</span></div>
+        ${r.license_number ? `<div class="receipt-row"><span class="receipt-label">Vehicle License</span><span class="receipt-value">${r.license_number}</span></div>` : ''}
         <div class="receipt-row"><span class="receipt-label">Status</span><span class="receipt-value"><span class="status-badge ${r.status.toLowerCase()}">${formatStatus(r.status)}</span></span></div>
         ${r.notes ? `<div class="receipt-row"><span class="receipt-label">Notes</span><span class="receipt-value">${r.notes}</span></div>` : ''}
         ${isComplete ? `

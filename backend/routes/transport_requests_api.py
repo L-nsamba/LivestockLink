@@ -11,6 +11,7 @@ from database.db import Session
 from models.transport_request import TransportRequest
 from models.booking import Bookings
 from models.user import User
+from models.transporter import Transporter
 from backend.utils.auth_decorator import require_role, get_current_user_id
 
 transport_requests = Blueprint('transport_request', __name__)
@@ -87,10 +88,12 @@ def get_farmer_requests(farmer_id):
             return jsonify({"error": "Unauthorized"}), 403
 
         TransporterUser = aliased(User)
-        results = session.query(TransportRequest, Bookings, TransporterUser).outerjoin(
+        results = session.query(TransportRequest, Bookings, TransporterUser, Transporter).outerjoin(
             Bookings, Bookings.request_id == TransportRequest.request_id
         ).outerjoin(
             TransporterUser, TransporterUser.user_id == Bookings.transporter_id
+        ).outerjoin(
+            Transporter, Transporter.user_id == Bookings.transporter_id
         ).filter(TransportRequest.farmer_id == farmer_id).all()
 
         return jsonify([{
@@ -107,7 +110,8 @@ def get_farmer_requests(farmer_id):
             "booking_id" : b.booking_id if b else None,
             "transporter_id" : b.transporter_id if b else None,
             "transporter_name" : tu.full_name if tu else None,
-        } for r, b, tu in results]), 200
+            "license_number" : t.license_number if t else None,
+        } for r, b, tu, t in results]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

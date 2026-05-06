@@ -110,6 +110,11 @@ Livestock Link is live and accessible at:
 
 [https://livestocklink.leonnsamba.tech](https://livestocklink.leonnsamba.tech)
 
+### ⚠️ Note
+- This project depends on an active Aiven database instance.
+- If the database service is suspended or inactive, existing users will not be able to authenticate.
+- Functionality will be restored once the database service is restarted.
+
 ### 🛠️ Deployment Stack
 
 | Component | Technology |
